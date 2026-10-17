@@ -21,6 +21,11 @@ def skeleton_path(dataset, path) -> Path:
     return DATA / "skeletons" / dataset / f"{path}.npz"
 
 
+def scores_path(model, split) -> Path:
+    """Contract 4: reports/scores/{model}/{split}.parquet (repo-relative)."""
+    return _REPO_ROOT / "reports" / "scores" / model / f"{split}.parquet"
+
+
 def windows_path(split) -> Path:
     """Contract 3: data/windows/{split}.npz."""
     return DATA / "windows" / f"{split}.npz"
