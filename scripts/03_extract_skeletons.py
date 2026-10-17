@@ -17,21 +17,18 @@ import mediapipe as mp
 import numpy as np
 import pandas as pd
 
+from fallsense.config import DATA, load_config, skeleton_path
 from fallsense.io_video import iter_frames
 from fallsense.pose import PoseExtractor
 
-# Values from configs/default.yaml (Dev B); switch to fallsense.config once M3 is on main.
-FPS = 15
-POSE_MODEL = Path("models/pose/pose_landmarker_full.task")
-POSE = {"min_det": 0.5, "min_presence": 0.5, "min_track": 0.5}
-LE2I_UPSCALE = False
+CFG = load_config()
+FPS = CFG["fps"]
+POSE_MODEL = Path(__file__).resolve().parents[1] / CFG["pose_model"]
+POSE = {k: CFG["pose"][k] for k in ("min_det", "min_presence", "min_track")}
+LE2I_UPSCALE = CFG["le2i_upscale"]
 
 SKIP_FLAGS = {"missing", "unreadable"}
 LOG_FIELDS = ["dataset", "path", "frames", "det_rate", "seconds", "pose_model"]
-
-
-def skeleton_path(root: Path, dataset: str, path: str) -> Path:
-    return root / "skeletons" / dataset / f"{path}.npz"
 
 
 def extract_clip(row: dict, out: str, model: str, upscale: float) -> dict:
@@ -81,7 +78,7 @@ def extract_clip(row: dict, out: str, model: str, upscale: float) -> dict:
 
 
 def main() -> int:
-    data = Path(os.environ["FALL_DATA"])
+    data = DATA
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--datasets", nargs="+")
     ap.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 4) - 2))
@@ -103,9 +100,7 @@ def main() -> int:
     if args.limit:
         inv = inv.groupby("dataset", group_keys=False).head(args.limit)
     inv = inv.assign(
-        out=[
-            str(skeleton_path(data, d, p)) for d, p in zip(inv["dataset"], inv["path"])
-        ]
+        out=[str(skeleton_path(d, p)) for d, p in zip(inv["dataset"], inv["path"])]
     )
     if not args.overwrite:
         inv = inv[[not Path(o).exists() for o in inv["out"]]]

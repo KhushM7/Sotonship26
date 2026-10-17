@@ -16,9 +16,11 @@ import cv2
 import pandas as pd
 from tqdm import tqdm
 
+from fallsense.config import DATA, load_config
 from fallsense.labels import load_labels
 
-KNOWN = ["GMDCSA24", "caucafall", "le2i", "mcfd", "occu", "of-syn", "OOPS"]
+CFG = load_config()
+KNOWN = CFG["datasets"] + CFG["test_only_datasets"]
 SINGLE_ACTOR = {"mcfd"}
 FALL = 1
 MIN_SECONDS = 2.0
@@ -162,7 +164,7 @@ def leak_check(df: pd.DataFrame) -> bool:
 
 def main() -> int:
     root = Path(os.environ["OMNIFALL_ROOT"])
-    out = Path(os.environ["FALL_DATA"]) / "inventory.csv"
+    out = DATA / "inventory.csv"
     on_disk = [d for d in KNOWN if (root / d / "video").is_dir()]
 
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])

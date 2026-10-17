@@ -4,7 +4,10 @@ from functools import cache
 
 import pandas as pd
 
-TEST_ONLY = {"OOPS"}
+from fallsense.config import load_config
+
+_CFG = load_config()
+TEST_ONLY = set(_CFG["test_only_datasets"])
 
 
 def config_for(dataset: str) -> str:
@@ -13,7 +16,7 @@ def config_for(dataset: str) -> str:
         return "of-syn"
     if dataset == "OOPS":
         return "of-itw"
-    return f"{dataset.lower()}-cs"
+    return f"{dataset.lower()}{_CFG['split_config_suffix']}"
 
 
 @cache
