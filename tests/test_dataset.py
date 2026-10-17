@@ -164,3 +164,26 @@ def test_bank_without_occlusion_module_is_clear_error(tmp_path: Path) -> None:
             dataset.WindowDataset(_toy_npz(tmp_path), stats, augment=True, bank=_bank())
     else:
         pytest.skip("Dev A's occlusion.py is merged")
+
+
+def test_bank_with_dev_a_simulation(tmp_path: Path) -> None:
+    """S16: the ClipBank hook drives Dev A's real occlusion.simulate_occlusion."""
+    pytest.importorskip("fallsense.occlusion")
+    always = {**dataset.OCC, "aug_p_fall": 1.0, "aug_p_other": 1.0}
+    from fallsense.occlusion import simulate_occlusion
+
+    rng = np.random.default_rng(6)
+    for end in (60, 199):  # before the fall and while fallen
+        out = dataset.maybe_occlude(_bank(), 0, end, rng, simulate_occlusion, always)
+        assert out is not None
+        kp, present, ctx = out
+        assert kp.shape == (30, 13, 3) and present.shape == (30,)
+        assert np.isfinite(ctx).all()
+    stats = {
+        "mu": np.zeros(N_FEATURES, np.float32),
+        "sd": np.ones(N_FEATURES, np.float32),
+    }
+    ds = dataset.WindowDataset(_toy_npz(tmp_path), stats, augment=True, bank=_bank())
+    for i in range(len(ds)):
+        x, _ = ds[i]
+        assert torch.isfinite(x).all()
