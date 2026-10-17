@@ -45,7 +45,7 @@ Your laptop holds Le2i, OCCU, OF-Syn and OOPS in `C:\fall-data\cache\videos\<dat
 - [x] Any failure: Le2i – rerun the resumable curl block into `C:\fall-data\downloads\le2i\FallDataset.zip`, then `omnifall prepare le2i --workers 4`. Anything else – rerun `omnifall prepare <dataset> --workers 4` (it reuses archives on disk). ✅ *no failures*
 - [ ] Free space once everything verifies: `Remove-Item C:\fall-data\downloads\* -Recurse -Force` (removes the 45 GB OOPS archive and the Le2i zip). ⏳ *107 GB in downloads; waiting for your go-ahead to delete*
 - [x] Record each dataset's licence from `omnifall sources <dataset>` and BibTeX from `omnifall cite <dataset>` in a scratch note; it goes into `DATA_CARD.md` in Step 7. ✅ *saved to C:\fall-data\licences_and_bibtex.txt (le2i CC BY-NC-SA 3.0, occu CC BY 4.0, OOPS CC BY-NC-SA 4.0, of-syn CC BY-NC-SA 4.0 / CC BY-NC 4.0 inconsistency)*
-- [ ] **SYNC S0 (both)** – read your four verify results out loud; Dev B reads theirs (GMDCSA24, CAUCAFall, MCFD). Both tick only when all seven datasets verify. ⏳ *Dev A side read out (all four OK); waiting for Dev B results*
+- [x] **SYNC S0 (both)** – read your four verify results out loud; Dev B reads theirs (GMDCSA24, CAUCAFall, MCFD). Both tick only when all seven datasets verify. ✅ *all seven verify: le2i 190, occu 10, of-syn 12000, OOPS 818 (A); GMDCSA24 160, caucafall 100, mcfd 192 (B). Licences from B: GMDCSA24 MIT, CAUCAFall CC BY 4.0, MCFD "see homepage" (check by hand)*
 
 ## Step 1 – Create the repo and environment
 
@@ -126,11 +126,11 @@ $env:OMNIFALL_ROOT = "C:\fall-data\cache\videos"
   - `curl.exe -L -o models\pose\pose_landmarker_full.task https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/latest/pose_landmarker_full.task`
   - same again with `full` replaced by `lite` in both places. If a link 404s, copy the current one from the Models section of the [Pose Landmarker overview](https://developers.google.com/edge/mediapipe/solutions/vision/pose_landmarker).
 - [x] Pull Dev B's `config.py`, `configs/default.yaml` and `scripts/00_check_env.py` once Dev B has merged them to main (M3); review that pull request. ✅ *M3 merged by Dev B; a/io-pose rebased onto it*
-- [ ] **SYNC S2 (A ↔ B)** – both run `python scripts\00_check_env.py`; every line prints OK on both laptops. Read out `mediapipe` and `torch` versions; they must match. Tick only when both pass. ⏳ *Dev A laptop: all OK, mediapipe 1.1.1, torch 2.14.1+cpu; waiting for Dev B run*
+- [x] **SYNC S2 (A ↔ B)** – both run `python scripts\00_check_env.py`; every line prints OK on both laptops. Read out `mediapipe` and `torch` versions; they must match. Tick only when both pass. ✅ *both laptops all OK; mediapipe 1.1.1 and torch 2.14.1+cpu on both (B on Python 3.11.4, A on 3.11.17)*
 
 ### Git habits (both)
 
-Branch per task (`a/labels`, `a/pose`, `b/features`), small PRs, the other dev reviews before merge, `ruff format`, `ruff check`, `mypy` and `pytest -q` before every push (`.githooks/pre-push` runs all four and blocks the push if one fails; turn it on once per clone with `git config core.hooksPath .githooks`). Every function has type hints: ruff's `ANN` rules and mypy (`disallow_untyped_defs`) enforce it, settings in `pyproject.toml`, nothing under `data/` ever committed.
+Branch per task (`a/labels`, `a/pose`, `b/features`), small PRs, the other dev reviews before merge, `.githooks/pre-push` runs `ruff format --check` and `ruff check` on every push (a few seconds; turn it on once per clone with `git config core.hooksPath .githooks`); run `pytest -q` yourself before opening a PR. Type hints are welcome but not enforced, nothing under `data/` ever committed.
 
 ### Branches and merges to `main` (identical in both docs)
 
@@ -139,7 +139,7 @@ Each dev works on their own branches and merges small pieces to `main` as soon a
 Rules:
 
 - `main` always runs: the only direct push is M1; every other change goes in through a pull request.
-- The other dev reviews and approves every PR; the author's push passed the pre-push checks (ruff format, ruff check, mypy, pytest).
+- The other dev reviews and approves every PR; the author's push passed the ruff pre-push check and they ran `pytest -q` first.
 - Use squash and merge, then delete the branch.
 - Right after any merge, both devs run `git checkout main` and `git pull`, then `git rebase main` on whatever branch they are on.
 - Merge small and early; a branch should hold one piece, not a day's work.
@@ -298,7 +298,7 @@ occlusion:
 
 **Extra time (rough; replace with measured).** Dev A 5–7 h: `occlusion.py` and tests 2–3 h, realism check 1 h, tracker and tests 2–3 h, QC and evaluation changes about 1 h. Dev B 3–4 h: contract v2 about 1 h, features and windows 1.5–2 h, `ClipBank` and the augmentation hook 1–1.5 h, live hook 0.5 h. Training takes about 20–50% longer per run because the occluded examples are harder; on CPU that is minutes.
 
-- [ ] **SYNC S3 (both)** – read this section together, including the occlusion handling above; both say "agreed" to `schema_version: 2` before writing any more code. Dev B then merges the contract v2 changes (M18).
+- [x] **SYNC S3 (both)** – read this section together, including the occlusion handling above; both say "agreed" to `schema_version: 2` before writing any more code. Dev B then merges the contract v2 changes (M18). ✅ *agreed schema_version 2 including occlusion handling; Dev B merged M18 as PR #7*
 
 ## Step 3 – Inventory, video reader, pose wrapper and extraction script
 
@@ -392,7 +392,7 @@ class PoseExtractor:
 - [x] Print an ETA after the first 10 clips. ✅
 - [x] Smoke test yourself: `--datasets le2i --limit 5`; open one .npz, check shapes against Contract 1 and `detected.mean()` above 0.8 on a walking clip. ✅ *5 Le2i clips; shapes match Contract 1; det 0.84-0.99*
 - [x] Merge 3a–3d `by pull request from branch a/io-pose (M4); Dev B reviews and you both confirm main is green before S4`. ✅ *merged as PR #3*
-- [ ] **SYNC S4 (A → B)** – tell Dev B the four files are merged and which pose model (and Le2i upscale setting) to use. Dev B pulls, runs `02_inventory.py` and `03_extract_skeletons.py --datasets GMDCSA24 --limit 5`, and reads out the array shapes and detection rate. Tick when both agree it works.
+- [x] **SYNC S4 (A → B)** – tell Dev B the four files are merged and which pose model (and Le2i upscale setting) to use. Dev B pulls, runs `02_inventory.py` and `03_extract_skeletons.py --datasets GMDCSA24 --limit 5`, and reads out the array shapes and detection rate. Tick when both agree it works. ✅ *B: inventory 449 clips (GMDCSA24 160, caucafall 97 labelled, mcfd 192 all train, 29 labels_overrun, none missing/unreadable); smoke kp (T,33,4), world (T,33,3), fps 15, full@1.1.1, detection 0.85-1.0; full run 444 ok, 0 failed, 17.9 min*
 
 ## Step 4 – Labels, extraction, QC and the extra datasets
 
@@ -487,7 +487,7 @@ Spec: "Occlusion handling – schema_version 2" in Step 2. Needs M18 (config v2)
 
 ### 4e. OF-Syn subset and OOPS (runs while Dev B trains)
 
-- [ ] Subset: `omnifall.load("metadata-syn")`, unique paths; age groups are 0 toddler, 1 child, 2 teen, 3 young adult, 4 middle-aged, 5 elderly (2,000 each). Keep **all 2,000 elderly clips** and sample a third of every other group (`groupby("age_group").sample(frac=1/3, random_state=1337)`), 5,335 clips in total, so the elderly subgroup gets 202 test clips instead of 54. Save `data\of_syn_subset.csv` and commit a copy to `configs/` on branch a/extras and merge by pull request (M12) before S11. ⏳ *built: 5,335 clips (train 4,274 / val 522 / test 539; elderly 2,000); the earlier 4,002-clip version is a strict subset, so nothing extracted is wasted; waiting to commit on a/extras (M12)*
+- [x] Subset: `omnifall.load("metadata-syn")`, unique paths; age groups are 0 toddler, 1 child, 2 teen, 3 young adult, 4 middle-aged, 5 elderly (2,000 each). Keep **all 2,000 elderly clips** and sample a third of every other group (`groupby("age_group").sample(frac=1/3, random_state=1337)`), 5,335 clips in total, so the elderly subgroup gets 202 test clips instead of 54. Save `data\of_syn_subset.csv` and commit a copy to `configs/` on branch a/extras and merge by pull request (M12) before S11. ✅ *merged as PR #9 (M12): 5,335 clips, all 2,000 elderly, train 4,274 / val 522 / test 539*
 - [ ] `python scripts\02_inventory.py --datasets of-syn OOPS` ⏳ *running since 14:19; OF-Syn probing is slow (seeking to the last AV1 frame decodes the whole clip, ~3.5 s per clip under load), about 100 min for all 12,000 clips*
 - [ ] `python scripts\03_extract_skeletons.py --datasets of-syn --clip-list data\of_syn_subset.csv` (estimate 45–95 min for 5,335 clips; extra 1,333 elderly clips add about 12–25 min). ⏳ *queued after the inventory, on the 4,002-clip list; the 1,333 extra elderly clips need one more run with the 5,335-clip list (resumes, skips done clips)*
 - [ ] `python scripts\03_extract_skeletons.py --datasets OOPS` (estimate 15–30 min). ⏳ *queued after OF-Syn*

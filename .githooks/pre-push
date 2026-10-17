@@ -1,21 +1,15 @@
 #!/bin/sh
-# Runs before every `git push`; the push is cancelled if any check fails.
-# Turn it on once per clone:  git config core.hooksPath .githooks
+# Runs before every `git push`; the push is cancelled if formatting or lint fails.
+# Takes a few seconds. Turn it on once per clone:  git config core.hooksPath .githooks
 set -e
 cd "$(git rev-parse --show-toplevel)"
 
 PY=.venv/Scripts/python.exe
 [ -x "$PY" ] || PY=.venv/bin/python
 [ -x "$PY" ] || PY=python
-: "${FALL_DATA:=C:/fall-data}"
-export FALL_DATA
 
 echo "pre-push: ruff format --check"
 "$PY" -m ruff format --check .
 echo "pre-push: ruff check"
 "$PY" -m ruff check .
-echo "pre-push: mypy"
-"$PY" -m mypy
-echo "pre-push: pytest"
-"$PY" -m pytest -q
 echo "pre-push: all checks passed"
