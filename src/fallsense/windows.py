@@ -159,7 +159,7 @@ def window_ends(
     n_frames: int, y4: np.ndarray, train: bool, cfg: dict = _CFG
 ) -> np.ndarray:
     """Last frame of every window: stride_train (plus stride_train_near_fall within
-    1 s of a falling frame) for train and val, stride_eval otherwise."""
+    1 s of a falling frame) for train, stride_eval otherwise (val, test, OOPS)."""
     first = cfg["window"] - 1
     if n_frames <= first:
         return np.zeros(0, dtype=np.int64)
