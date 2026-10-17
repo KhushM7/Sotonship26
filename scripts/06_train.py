@@ -4,14 +4,22 @@
     python scripts/06_train.py --model gru --train-sets GMDCSA24 caucafall le2i mcfd ...
     python scripts/06_train.py --windows-dir data/windows_dryrun --epochs 3 ...  # dry run
 
-Writes to --out: model.pt, feat_stats.npz, config.yaml (config + run args),
-train_log.csv, val_logits.npy (best epoch, val.npz order), confusion.png.
+Writes to --out: model.pt, feat_stats.npz, config.yaml (config + run args + git
+commit + laptop), train_log.csv (rewritten every epoch), val_logits.npy (best
+epoch, all of val in val.npz order), confusion.png.
+
+The best epoch is selected on val windows from the --train-sets datasets only (a
+model trained on the core sets is not judged on OF-Syn val); AP and F1 on all of
+val are logged alongside as val_all_*.
 """
 
 import argparse
 import os
+import platform
 import random
+import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -48,8 +56,29 @@ def keep_datasets(
     arrays: dict[str, np.ndarray], index: pd.DataFrame, sets: list[str]
 ) -> dict[str, np.ndarray]:
     """Only windows whose clip (row of index.csv) belongs to one of `sets`."""
-    ok = index["dataset"].isin(sets).to_numpy()[arrays["clip_id"]]
+    ok = in_datasets(arrays, index, sets)
     return {k: v[ok] for k, v in arrays.items()}
+
+
+def in_datasets(
+    arrays: dict[str, np.ndarray], index: pd.DataFrame, sets: list[str]
+) -> np.ndarray:
+    """Boolean mask: window's clip belongs to one of `sets`."""
+    return index["dataset"].isin(sets).to_numpy()[arrays["clip_id"]]
+
+
+def git_commit() -> str:
+    try:
+        out = subprocess.run(
+            ["git", "describe", "--always", "--dirty"],
+            cwd=REPO,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return "unknown"
+    return out.stdout.strip()
 
 
 def class_weights(y: np.ndarray) -> torch.Tensor:
@@ -129,10 +158,16 @@ def main() -> int:
     ap.add_argument("--epochs", type=int, default=40)
     ap.add_argument("--batch", type=int, default=256)
     ap.add_argument("--workers", type=int, default=4)
+    ap.add_argument(
+        "--threads",
+        type=int,
+        default=max(1, (os.cpu_count() or 2) - 1),
+        help="torch threads (cap it when several runs share a laptop)",
+    )
     args = ap.parse_args()
 
     seed_everything(args.seed)
-    torch.set_num_threads(max(1, (os.cpu_count() or 2) - 1))
+    torch.set_num_threads(args.threads)
     args.out.mkdir(parents=True, exist_ok=True)
 
     train_npz = args.windows_dir / "train.npz"
@@ -144,9 +179,16 @@ def main() -> int:
     if args.train_sets:
         assert index is not None
         train = keep_datasets(train, index, args.train_sets)
-        train_npz = args.out / "train_subset.npz"
-        np.savez(train_npz, **train)
-    print(f"train {len(train['y'])} windows, val {len(val['y'])} windows")
+    # select epochs on val windows from the training datasets only
+    sel = (
+        in_datasets(val, index, args.train_sets)
+        if args.train_sets and index is not None
+        else np.ones(len(val["y"]), bool)
+    )
+    print(
+        f"train {len(train['y'])} windows, val {len(val['y'])} windows "
+        f"({int(sel.sum())} from the train sets, used for selection)"
+    )
     print("train classes:", np.bincount(train["y"], minlength=windows.N_CLASSES))
 
     # z-score stats over train windows without augmentation
@@ -159,9 +201,18 @@ def main() -> int:
     if args.occlude:
         assert index is not None
         bank = dataset.ClipBank.from_index(index, train["clip_id"])
-    ds = dataset.WindowDataset(
-        train_npz, stats, augment=args.augment, seed=args.seed, bank=bank
-    )
+    if args.train_sets:
+        # WindowDataset reads an npz; the subset only lives until it is loaded
+        with tempfile.TemporaryDirectory() as tmp:
+            train_npz = Path(tmp) / "train.npz"
+            np.savez(train_npz, **train)
+            ds = dataset.WindowDataset(
+                train_npz, stats, augment=args.augment, seed=args.seed, bank=bank
+            )
+    else:
+        ds = dataset.WindowDataset(
+            train_npz, stats, augment=args.augment, seed=args.seed, bank=bank
+        )
     loader = torch.utils.data.DataLoader(
         ds,
         batch_size=args.batch,
@@ -181,6 +232,9 @@ def main() -> int:
 
     with open(args.out / "config.yaml", "w", encoding="utf-8") as f:
         run = {k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()}
+        run["git_commit"] = git_commit()
+        run["laptop"] = platform.node()
+        run["val_selection"] = " ".join(args.train_sets or ["all"])
         yaml.safe_dump({"run": run, "config": CFG}, f, sort_keys=False)
 
     log, best, best_logits, stale = [], (-1.0, -1.0), None, 0
@@ -199,16 +253,20 @@ def main() -> int:
         sched.step()
 
         logits = predict(model, x_val)
-        ap_fall, f1 = val_metrics(logits, val["y"])
+        ap_fall, f1 = val_metrics(logits[sel], val["y"][sel])
+        ap_all, f1_all = val_metrics(logits, val["y"])
         secs = time.perf_counter() - t0
         log.append(
             {"epoch": epoch, "loss": total / n, "val_ap_falling": ap_fall,
-             "val_macro_f1": f1, "seconds": secs}
+             "val_macro_f1": f1, "val_all_ap_falling": ap_all,
+             "val_all_macro_f1": f1_all, "seconds": secs}
         )  # fmt: skip
+        pd.DataFrame(log).to_csv(args.out / "train_log.csv", index=False)
         improved = (ap_fall, f1) > best
         print(
             f"epoch {epoch:2d}  loss {total / n:.4f}  val AP(falling) {ap_fall:.4f}"
-            f"  macro F1 {f1:.4f}  {secs:.1f}s" + ("  *" if improved else "")
+            f"  macro F1 {f1:.4f}  (all val {ap_all:.4f} / {f1_all:.4f})"
+            f"  {secs:.1f}s" + ("  *" if improved else "")
         )
         if epoch == 1:
             # epoch 1 includes DataLoader worker start-up (slow on Windows)
@@ -230,7 +288,6 @@ def main() -> int:
                 print(f"early stop: {PATIENCE} epochs without improvement")
                 break
 
-    pd.DataFrame(log).to_csv(args.out / "train_log.csv", index=False)
     np.save(args.out / "val_logits.npy", best_logits)
     save_confusion(best_logits, val["y"], args.out / "confusion.png")
     print(f"best val AP(falling) {best[0]:.4f}, macro F1 {best[1]:.4f} -> {args.out}")

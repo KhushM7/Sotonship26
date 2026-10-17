@@ -5,7 +5,8 @@
                                                           # dry run before S7
 
 Train and val use qc_pass clips only; test, staged_test and OOPS use every clip
-(clip_id joins back to index.csv, which keeps qc_pass). OOPS goes to its own
+(clip_id joins back to index.csv, which keeps qc_pass). Only train uses the
+dense near-fall stride; val is cut every stride_eval frames like test. OOPS goes to its own
 oops.npz so it is never mixed into test. The dry run builds a provisional index
 from data/inventory.csv (qc_pass = True) and writes to data/windows_dryrun/.
 """
@@ -62,7 +63,9 @@ def build_clip(row: pd.Series, clip_id: int, counts: Counter) -> dict[str, np.nd
     segs = labels.clean_segments(segs, float(row["duration_s"]), counts)
     y4 = labels.to4(labels.frame_labels(segs, d["t_ms"]))
 
-    train = row["split"] in TRAIN_SPLITS
+    # only train gets the dense near-fall stride; val is cut like test (every
+    # stride_eval frames) so event metrics and calibration are not flattered
+    train = row["split"] == "train"
     ends = windows.window_ends(len(y4), y4, train=train)
     out = windows.clip_windows(kp, present, ctx, y4, ends, CAP_S)
     n = len(out["y"])
