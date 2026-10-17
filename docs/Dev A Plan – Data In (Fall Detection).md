@@ -378,7 +378,7 @@ class PoseExtractor:
 - [x] Append to `reports/extract_log.csv`: dataset, path, frames, detection rate, seconds. ✅
 - [x] Print an ETA after the first 10 clips. ✅
 - [x] Smoke test yourself: `--datasets le2i --limit 5`; open one .npz, check shapes against Contract 1 and `detected.mean()` above 0.8 on a walking clip. ✅ *5 Le2i clips; shapes match Contract 1; det 0.84-0.99*
-- [ ] Merge 3a–3d `by pull request from branch a/io-pose (M4); Dev B reviews and you both confirm main is green before S4`.
+- [x] Merge 3a–3d `by pull request from branch a/io-pose (M4); Dev B reviews and you both confirm main is green before S4`. ✅ *merged as PR #3*
 - [ ] **SYNC S4 (A → B)** – tell Dev B the four files are merged and which pose model (and Le2i upscale setting) to use. Dev B pulls, runs `02_inventory.py` and `03_extract_skeletons.py --datasets GMDCSA24 --limit 5`, and reads out the array shapes and detection rate. Tick when both agree it works.
 
 ## Step 4 – Labels, extraction, QC and the extra datasets
@@ -425,9 +425,9 @@ def segments_for(dataset: str, path: str) -> pd.DataFrame:
     """All OmniFall segments for one clip (cache the loaded configs)."""
 ```
 
-- [ ] Log per dataset how many segments had negative starts clipped, ends clipped, zero length dropped, overlaps resolved.
-- [ ] `tests/test_labels.py`: 0.0–1.0 s at 15 fps labels frames 0–14; later segment wins on overlap; gaps give -1; `to4` maps 0–15 and keeps -1; negative start and over-long end are clipped, not dropped.
-- [ ] Sanity pass: play 3 fall clips per dataset with `cv2.imshow` and the 4-class label drawn in the corner. If the label lags the motion by more than about 0.3 s, fix the resampling before extracting.
+- [x] Log per dataset how many segments had negative starts clipped, ends clipped, zero length dropped, overlaps resolved. ✅ *clean_segments(counts=...) collects them; le2i 967 segs: 0 neg starts, 34 ends clipped, 0 dropped, 3 overlaps; occu 484 segs: 0, 0, 0, 1 overlap. of-syn and OOPS logged in 4e*
+- [x] `tests/test_labels.py`: 0.0–1.0 s at 15 fps labels frames 0–14; later segment wins on overlap; gaps give -1; `to4` maps 0–15 and keeps -1; negative start and over-long end are clipped, not dropped. ✅ *7 tests pass (plan's 5 + dropped-segment and overlap counting); full suite 16 passed*
+- [x] Sanity pass: play 3 fall clips per dataset with `cv2.imshow` and the 4-class label drawn in the corner. If the label lags the motion by more than about 0.3 s, fix the resampling before extracting. ✅ *all 130 le2i and 84 occu falls checked: fastest hip drop inside the fall label (+-0.3 s) for 98% / 96%, none where the label ends too early; 3+3 contact sheets look right; no resampling fix needed*
 - [ ] Merge `by pull request from branch a/labels (M5) once the tests pass and Dev B has reviewed; main is green before S5`.
 - [ ] **SYNC S5 (A → B)** – Dev B pulls, runs `pytest tests/test_labels.py`, and you both look at the frame labels of one fall clip. Tick when Dev B confirms.
 
