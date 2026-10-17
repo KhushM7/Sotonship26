@@ -1,4 +1,4 @@
-schema_version: 1
+schema_version: 2
 fps: 15
 window: 30                 # frames = 2.0 s
 stride_train: 8
@@ -14,3 +14,12 @@ test_only_datasets: [OOPS]
 split_config_suffix: "-cs"
 seed: 1337
 on_floor_seconds: 20
+occlusion:
+  ctx_cap_s: 20          # cap on seconds-since-seen (matches on_floor_seconds)
+  edge_margin: 0.10      # lost within this of a border -> "left"
+  descent_speed: 0.15    # hips dropping faster than this (frame heights/s) when lost -> "hidden_down"
+  hidden_check_s: 3.0    # tracker: hidden_down for this long -> CHECK; tuned on val
+  min_visible_kp: 4      # simulation: fewer visible keypoints -> whole frame lost
+  lookback_frames: 330   # simulation: clip history used (window + ctx_cap_s at 15 fps)
+  aug_p_fall: 0.25       # simulation: probability for windows near a fall
+  aug_p_other: 0.15      # simulation: probability for all other windows

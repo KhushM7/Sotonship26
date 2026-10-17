@@ -280,7 +280,7 @@ occlusion:
 
 **Extra time (rough; replace with measured).** Dev A 5–7 h: `occlusion.py` and tests 2–3 h, realism check 1 h, tracker and tests 2–3 h, QC and evaluation changes about 1 h. Dev B 3–4 h: contract v2 about 1 h, features and windows 1.5–2 h, `ClipBank` and the augmentation hook 1–1.5 h, live hook 0.5 h. Training takes about 20–50% longer per run because the occluded examples are harder; on CPU that is minutes.
 
-- [ ] **SYNC S3 (both)** – read this section together, including the occlusion handling above; both say "agreed" to `schema_version: 2` before writing any more code. Dev B then merges the contract v2 changes (M18).
+- [x] **SYNC S3 (both)** – read this section together, including the occlusion handling above; both say "agreed" to `schema_version: 2` before writing any more code. Dev B then merges the contract v2 changes (M18).
 - [ ] **M18 (you)** – on branch `b/contract-v2`: bump `configs/default.yaml` to `schema_version: 2` and add the `occlusion` block; add `present` bool (N, 30) and `ctx` float32 (N, 30, 4) to `SCHEMA` in `windows.py` and to `save_windows`; extend `tests/test_windows.py` for the two keys. Pull request; Dev A reviews.
 
 ## Step 3 – Extract and share your three datasets
