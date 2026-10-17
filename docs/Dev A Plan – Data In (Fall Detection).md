@@ -33,14 +33,14 @@ Compute times in this doc are estimates; replace them with measured numbers as y
 
 Your laptop holds Le2i, OCCU, OF-Syn and OOPS in `C:\fall-data\cache\videos\<dataset>\video\`. Confirm every set is complete before any code is written.
 
-- [ ] In any new PowerShell window, set the session folders:
+- [x] In any new PowerShell window, set the session folders: ✅
   - `$env:OMNIFALL_CACHE_DIR = "C:\fall-data\cache"`
   - `$env:OMNIFALL_DOWNLOAD_DIR = "C:\fall-data\downloads"`
   - `Remove-Item Env:OMNIFALL_ROOT -ErrorAction SilentlyContinue`
-- [ ] OOPS: answer `y` at the licence prompt if still waiting; wait for `OOPS DONE - 818 of 818 videos`.
-- [ ] `omnifall verify le2i`, `omnifall verify occu`, `omnifall verify of-syn`, `omnifall verify OOPS` – each reports no missing files.
-- [ ] Video counts: `(Get-ChildItem C:\fall-data\cache\videos\<dataset>\video -Recurse -Filter *.mp4).Count` – expect Le2i 190, OOPS 818, OF-Syn 12,000; note OCCU's count.
-- [ ] Any failure: Le2i – rerun the resumable curl block into `C:\fall-data\downloads\le2i\FallDataset.zip`, then `omnifall prepare le2i --workers 4`. Anything else – rerun `omnifall prepare <dataset> --workers 4` (it reuses archives on disk).
+- [x] OOPS: answer `y` at the licence prompt if still waiting; wait for `OOPS DONE - 818 of 818 videos`. ✅ *818 of 818*
+- [x] `omnifall verify le2i`, `omnifall verify occu`, `omnifall verify of-syn`, `omnifall verify OOPS` – each reports no missing files. ✅ *all four OK - le2i 190/190, occu 10/10, of-syn 12000/12000, OOPS 818/818*
+- [x] Video counts: `(Get-ChildItem C:\fall-data\cache\videos\<dataset>\video -Recurse -Filter *.mp4).Count` – expect Le2i 190, OOPS 818, OF-Syn 12,000; note OCCU's count. ✅ *le2i 190, OOPS 818, of-syn 12000, occu 10*
+- [x] Any failure: Le2i – rerun the resumable curl block into `C:\fall-data\downloads\le2i\FallDataset.zip`, then `omnifall prepare le2i --workers 4`. Anything else – rerun `omnifall prepare <dataset> --workers 4` (it reuses archives on disk). ✅ *no failures*
 - [ ] Free space once everything verifies: `Remove-Item C:\fall-data\downloads\* -Recurse -Force` (removes the 45 GB OOPS archive and the Le2i zip).
 - [ ] Record each dataset's licence from `omnifall sources <dataset>` and BibTeX from `omnifall cite <dataset>` in a scratch note; it goes into `DATA_CARD.md` in Step 7.
 - [ ] **SYNC S0 (both)** – read your four verify results out loud; Dev B reads theirs (GMDCSA24, CAUCAFall, MCFD). Both tick only when all seven datasets verify.
@@ -51,16 +51,16 @@ You create the repo; Dev B clones it and adds the config and environment-check f
 
 ### 1a. Repo skeleton
 
-- [ ] On GitHub create a **private** repo `fallsense`; Settings → Collaborators → add Dev B.
-- [ ] `git clone <repo-url> C:\code\fallsense` and `cd C:\code\fallsense`.
-- [ ] Create the layout:
+- [x] On GitHub create a **private** repo `fallsense`; Settings → Collaborators → add Dev B. ✅ *repo is KhushM7/Sotonship26*
+- [x] `git clone <repo-url> C:\code\fallsense` and `cd C:\code\fallsense`. ✅ *working in the existing Sotonship26 folder*
+- [x] Create the layout: ✅
 
 ```powershell
 New-Item -ItemType Directory -Force configs, src\fallsense, scripts, tests, models\pose, models\gru-v1, reports | Out-Null
 New-Item -ItemType File -Force src\fallsense\__init__.py, README.md, DATA_CARD.md | Out-Null
 ```
 
-- [ ] `.gitignore`:
+- [x] `.gitignore`: ✅ *also ignores *.egg-info/, .idea/, reports/extract_log.csv*
 
 ```
 data/
@@ -73,7 +73,7 @@ __pycache__/
 .env.ps1
 ```
 
-- [ ] `requirements.txt`:
+- [x] `requirements.txt`: ✅
 
 ```
 omnifall[video]>=0.2
@@ -92,7 +92,7 @@ pytest
 ruff
 ```
 
-- [ ] `.env.ps1.example` (each dev copies it to `.env.ps1`):
+- [x] `.env.ps1.example` (each dev copies it to `.env.ps1`): ✅
 
 ```powershell
 $env:FALL_DATA = "C:\fall-data"
@@ -101,26 +101,26 @@ $env:OMNIFALL_DOWNLOAD_DIR = "C:\fall-data\downloads"
 $env:OMNIFALL_ROOT = "C:\fall-data\cache\videos"
 ```
 
-- [ ] `pyproject.toml` with a minimal `[project] name = "fallsense"` and `[tool.setuptools.packages.find] where = ["src"]`, so `pip install -e .` makes `import fallsense` work.
-- [ ] Commit and push `straight to main (M1, the only direct push); from here on every change goes through a branch and pull request`.
-- [ ] **SYNC S1 (A → B)** – tell Dev B the repo URL. Dev B clones it and pushes a branch `b/hello`; you see it on GitHub. Tick when confirmed out loud.
+- [x] `pyproject.toml` with a minimal `[project] name = "fallsense"` and `[tool.setuptools.packages.find] where = ["src"]`, so `pip install -e .` makes `import fallsense` work. ✅ *requires-python pinned to 3.11*
+- [x] Commit and push `straight to main (M1, the only direct push); from here on every change goes through a branch and pull request`. ✅
+- [x] **SYNC S1 (A → B)** – tell Dev B the repo URL. Dev B clones it and pushes a branch `b/hello`; you see it on GitHub. Tick when confirmed out loud. ✅ *Dev B pushed test_branch; confirmed by user*
 
 ### 1b. Environment and lockfile
 
-- [ ] From the repo root:
+- [x] From the repo root: ✅ *Python 3.11.17, torch 2.14.1+cpu, mediapipe 1.1.1*
   - `uv venv --python 3.11 .venv`
   - `.venv\Scripts\activate`
   - `uv pip install -r requirements.txt`
   - `uv pip install torch --index-url https://download.pytorch.org/whl/cpu`
   - `uv pip install -e .`
-- [ ] `uv pip freeze > requirements.lock`, commit it on branch a/lockfile and merge by pull request (M2), then tell Dev B. Dev B installs with `uv pip sync requirements.lock`.
-- [ ] Link data into the repo: `New-Item -ItemType Junction -Path data -Target C:\fall-data`.
-- [ ] Save environment variables once, then close and reopen all terminals:
+- [ ] `uv pip freeze > requirements.lock`, commit it on branch a/lockfile and merge by pull request (M2), then tell Dev B. Dev B installs with `uv pip sync requirements.lock`. ⏳ *committed and pushed on a/lockfile; not yet on origin/main (checked 17 Oct)*
+- [x] Link data into the repo: `New-Item -ItemType Junction -Path data -Target C:\fall-data`. ✅
+- [x] Save environment variables once, then close and reopen all terminals: ✅
   - `setx FALL_DATA "C:\fall-data"`
   - `setx OMNIFALL_CACHE_DIR "C:\fall-data\cache"`
   - `setx OMNIFALL_DOWNLOAD_DIR "C:\fall-data\downloads"`
   - `setx OMNIFALL_ROOT "C:\fall-data\cache\videos"`
-- [ ] Pose models (use `curl.exe`, not `curl`):
+- [x] Pose models (use `curl.exe`, not `curl`): ✅ *full 9.4 MB, lite 5.8 MB, both load*
   - `curl.exe -L -o models\pose\pose_landmarker_full.task https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/latest/pose_landmarker_full.task`
   - same again with `full` replaced by `lite` in both places. If a link 404s, copy the current one from the Models section of the [Pose Landmarker overview](https://developers.google.com/edge/mediapipe/solutions/vision/pose_landmarker).
 - [ ] Pull Dev B's `config.py`, `configs/default.yaml` and `scripts/00_check_env.py` once Dev B has merged them to main (M3); review that pull request.
@@ -228,13 +228,13 @@ Dev B cannot extract their three datasets until these four files are merged, so 
 
 ### 3a. `scripts/02_inventory.py`
 
-- [ ] Flag `--datasets` (default: whatever is on this laptop under `OMNIFALL_ROOT`).
-- [ ] Load labels with `omnifall.load(config)`: `"<ds>-cs"` for GMDCSA24, caucafall, le2i, mcfd, occu; `"of-syn"` for OF-Syn; `"of-itw"` for OOPS (all OOPS rows go to `test`). Rename split `validation` to `val`.
-- [ ] One row per unique `(dataset, path)` with `split`, `subject`, `cam`, max label `end`. Resolve the file with each row's `dataset` column, never the config name: `Path(os.environ["OMNIFALL_ROOT"]) / dataset / "video" / f"{path}.mp4"`.
-- [ ] Probe with OpenCV: fps, frame count, width, height; decode the first and last frame.
-- [ ] Flag (keep the row, fill `flag`, `reason`): `missing`, `unreadable`, `short` (< 2 s), `fps_odd` (outside 10–60 or 0; fall back to 25), `labels_overrun` (last label end > video end + 0.5 s).
-- [ ] Write `data/inventory.csv` (local to each laptop) and print clips, hours, subjects and fall-segment counts per dataset and split.
-- [ ] Leak check that fails the script: no `(dataset, subject)` pair in both `train` and `test` (ignore `subject == -1`). MCFD has one actor: accept OmniFall's split, print a warning, note it for `DATA_CARD.md`.
+- [x] Flag `--datasets` (default: whatever is on this laptop under `OMNIFALL_ROOT`). ✅
+- [x] Load labels with `omnifall.load(config)`: `"<ds>-cs"` for GMDCSA24, caucafall, le2i, mcfd, occu; `"of-syn"` for OF-Syn; `"of-itw"` for OOPS (all OOPS rows go to `test`). Rename split `validation` to `val`. ✅
+- [x] One row per unique `(dataset, path)` with `split`, `subject`, `cam`, max label `end`. Resolve the file with each row's `dataset` column, never the config name: `Path(os.environ["OMNIFALL_ROOT"]) / dataset / "video" / f"{path}.mp4"`. ✅
+- [x] Probe with OpenCV: fps, frame count, width, height; decode the first and last frame. ✅
+- [x] Flag (keep the row, fill `flag`, `reason`): `missing`, `unreadable`, `short` (< 2 s), `fps_odd` (outside 10–60 or 0; fall back to 25), `labels_overrun` (last label end > video end + 0.5 s). ✅
+- [x] Write `data/inventory.csv` (local to each laptop) and print clips, hours, subjects and fall-segment counts per dataset and split. ✅ *le2i + occu done: 200 clips*
+- [x] Leak check that fails the script: no `(dataset, subject)` pair in both `train` and `test` (ignore `subject == -1`). MCFD has one actor: accept OmniFall's split, print a warning, note it for `DATA_CARD.md`. ✅ *passes for le2i + occu*
 
 ### 3b. `src/fallsense/io_video.py`
 
@@ -255,8 +255,8 @@ def iter_frames(path, target_fps=15):
     cap.release()
 ```
 
-- [ ] Use frame index / fps for time, not `CAP_PROP_POS_MSEC`.
-- [ ] Test on one OF-Syn clip: if the first `cap.read()` returns False (OF-Syn is AV1), add a PyAV branch (`av.open(path)`, `container.decode(video=0)`, `frame.to_ndarray(format="bgr24")`); PyAV comes with `omnifall[video]`.
+- [x] Use frame index / fps for time, not `CAP_PROP_POS_MSEC`. ✅
+- [x] Test on one OF-Syn clip: if the first `cap.read()` returns False (OF-Syn is AV1), add a PyAV branch (`av.open(path)`, `container.decode(video=0)`, `frame.to_ndarray(format="bgr24")`); PyAV comes with `omnifall[video]`. ✅ *OpenCV decodes OF-Syn AV1; PyAV fallback added and tested*
 
 ### 3c. `src/fallsense/pose.py`
 
@@ -288,18 +288,18 @@ class PoseExtractor:
         self.lm.close()
 ```
 
-- [ ] Benchmark on 5 clips each of Le2i and OCCU: `pose_landmarker_lite` vs `full`, frames/s per worker and detection rate. Use `full` unless it runs under 10 fps per worker.
-- [ ] Le2i is 320×240: also try upscaling 2× (`cv2.resize(..., interpolation=cv2.INTER_LINEAR)`) before pose; keep whichever gives the higher detection rate during fall segments, and write the choice into the config (tell Dev B).
+- [x] Benchmark on 5 clips each of Le2i and OCCU: `pose_landmarker_lite` vs `full`, frames/s per worker and detection rate. Use `full` unless it runs under 10 fps per worker. ✅ *full is 42 fps/worker on le2i (lite 59) -> use full*
+- [ ] Le2i is 320×240: also try upscaling 2× (`cv2.resize(..., interpolation=cv2.INTER_LINEAR)`) before pose; keep whichever gives the higher detection rate during fall segments, and write the choice into the config (tell Dev B). ⏳ *tested: no upscale 0.990 vs 2x 0.981 fall-frame detection -> le2i_upscale: false; waiting for Dev B's default.yaml (M3)*
 
 ### 3d. `scripts/03_extract_skeletons.py`
 
-- [ ] Flags: `--datasets`, `--workers` (default CPU cores − 2), `--limit N`, `--clip-list <csv>` (only these paths; used for the OF-Syn subset), `--overwrite`.
-- [ ] Input: `data/inventory.csv` rows not flagged `missing` or `unreadable`.
-- [ ] Resumable: skip clips whose .npz exists.
-- [ ] `ProcessPoolExecutor`; each worker builds its own `PoseExtractor` per clip, loops `iter_frames(path, 15)`, stacks outputs, saves with `np.savez_compressed` to a `.tmp` then renames.
-- [ ] Append to `reports/extract_log.csv`: dataset, path, frames, detection rate, seconds.
-- [ ] Print an ETA after the first 10 clips.
-- [ ] Smoke test yourself: `--datasets le2i --limit 5`; open one .npz, check shapes against Contract 1 and `detected.mean()` above 0.8 on a walking clip.
+- [x] Flags: `--datasets`, `--workers` (default CPU cores − 2), `--limit N`, `--clip-list <csv>` (only these paths; used for the OF-Syn subset), `--overwrite`. ✅
+- [x] Input: `data/inventory.csv` rows not flagged `missing` or `unreadable`. ✅
+- [x] Resumable: skip clips whose .npz exists. ✅
+- [x] `ProcessPoolExecutor`; each worker builds its own `PoseExtractor` per clip, loops `iter_frames(path, 15)`, stacks outputs, saves with `np.savez_compressed` to a `.tmp` then renames. ✅
+- [x] Append to `reports/extract_log.csv`: dataset, path, frames, detection rate, seconds. ✅
+- [x] Print an ETA after the first 10 clips. ✅
+- [x] Smoke test yourself: `--datasets le2i --limit 5`; open one .npz, check shapes against Contract 1 and `detected.mean()` above 0.8 on a walking clip. ✅ *5 Le2i clips; shapes match Contract 1; det 0.84-0.99*
 - [ ] Merge 3a–3d `by pull request from branch a/io-pose (M4); Dev B reviews and you both confirm main is green before S4`.
 - [ ] **SYNC S4 (A → B)** – tell Dev B the four files are merged and which pose model (and Le2i upscale setting) to use. Dev B pulls, runs `02_inventory.py` and `03_extract_skeletons.py --datasets GMDCSA24 --limit 5`, and reads out the array shapes and detection rate. Tick when both agree it works.
 
@@ -355,8 +355,8 @@ def segments_for(dataset: str, path: str) -> pd.DataFrame:
 
 ### 4b. Extract your core and occlusion sets
 
-- [ ] `python scripts\02_inventory.py --datasets le2i occu`
-- [ ] `python scripts\03_extract_skeletons.py --datasets le2i occu` (estimate: 70,000 frames, 10–15 min). Keep the laptop plugged in; the script resumes if interrupted.
+- [x] `python scripts\02_inventory.py --datasets le2i occu` ✅ *done early (before S5)*
+- [x] `python scripts\03_extract_skeletons.py --datasets le2i occu` (estimate: 70,000 frames, 10–15 min). Keep the laptop plugged in; the script resumes if interrupted. ✅ *200 clips, 0 failures, 4.6 min on 14 workers*
 
 ### 4c. Collect Dev B's skeletons
 
