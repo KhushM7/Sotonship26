@@ -102,6 +102,20 @@ def test_short_gaps_are_ignored() -> None:
     assert occ.find_disappearances(kp, present, WH, FPS).empty
 
 
+def test_stable_presence_fills_dropouts_and_drops_blips() -> None:
+    p = np.array([1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0], bool)
+    want = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0], bool)
+    np.testing.assert_array_equal(occ.stable_presence(p, fill=2, min_run=5), want)
+
+
+def test_hidden_person_flickering_back_is_one_disappearance() -> None:
+    kp, present = _drop_mid_frame()
+    kp[40:42], present[40:42] = kp[29], True  # detector catches them for 2 frames
+    gaps = occ.find_disappearances(kp, present, WH, FPS)
+    assert len(gaps) == 1
+    assert gaps.loc[0, "kind"] == "hidden_down" and not gaps.loc[0, "returned"]
+
+
 def _sinking(
     n: int = 60,
 ) -> tuple[npt.NDArray[np.float32], npt.NDArray[np.bool_]]:
