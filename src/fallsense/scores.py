@@ -23,7 +23,9 @@ def validate_scores(df: pd.DataFrame) -> None:
         raise ValueError(f"columns {list(df.columns)}, expected {list(COLUMNS)}")
     for col, dtype in COLUMNS.items():
         if df[col].dtype != dtype:
-            raise ValueError(f"{col}: dtype {df[col].dtype}, expected {np.dtype(dtype)}")
+            raise ValueError(
+                f"{col}: dtype {df[col].dtype}, expected {np.dtype(dtype)}"
+            )
     if df.isna().any().any():
         raise ValueError("NaN in scores")
     probs = df[PROB_COLUMNS].to_numpy()
@@ -33,7 +35,7 @@ def validate_scores(df: pd.DataFrame) -> None:
         raise ValueError("probabilities must sum to 1 per row")
 
 
-def save_scores(model, split, df: pd.DataFrame) -> None:
+def save_scores(model: str, split: str, df: pd.DataFrame) -> None:
     """Cast to the contract dtypes, validate and write the parquet file."""
     df = df[list(COLUMNS)].astype(COLUMNS).reset_index(drop=True)
     validate_scores(df)
@@ -42,7 +44,7 @@ def save_scores(model, split, df: pd.DataFrame) -> None:
     df.to_parquet(path, index=False)
 
 
-def load_scores(model, split) -> pd.DataFrame:
+def load_scores(model: str, split: str) -> pd.DataFrame:
     """Load and validate a score file."""
     df = pd.read_parquet(scores_path(model, split))
     validate_scores(df)

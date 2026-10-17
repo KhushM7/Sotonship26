@@ -1,6 +1,7 @@
 from collections import Counter
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 from fallsense.labels import UNLABELLED, clean_segments, frame_labels, to4
@@ -8,21 +9,21 @@ from fallsense.labels import UNLABELLED, clean_segments, frame_labels, to4
 FPS = 15
 
 
-def _segs(*rows):
+def _segs(*rows: tuple[float, float, int]) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=["start", "end", "label"])
 
 
-def _t_ms(n):
+def _t_ms(n: int) -> npt.NDArray[np.int64]:
     return np.round(np.arange(n) * 1000 / FPS).astype(np.int64)
 
 
-def test_one_second_segment_labels_frames_0_to_14():
+def test_one_second_segment_labels_frames_0_to_14() -> None:
     y = frame_labels(_segs((0.0, 1.0, 1)), _t_ms(30))
     assert (y[:15] == 1).all()
     assert (y[15:] == UNLABELLED).all()
 
 
-def test_later_segment_wins_on_overlap():
+def test_later_segment_wins_on_overlap() -> None:
     segs = clean_segments(_segs((0.0, 2.0, 0), (1.0, 3.0, 1)), duration_s=5.0)
     y = frame_labels(segs, _t_ms(45))
     t = _t_ms(45) / 1000
@@ -30,22 +31,22 @@ def test_later_segment_wins_on_overlap():
     assert (y[(t >= 1.0) & (t < 3.0)] == 1).all()
 
 
-def test_gap_between_segments_is_unlabelled():
+def test_gap_between_segments_is_unlabelled() -> None:
     y = frame_labels(_segs((0.0, 1.0, 0), (2.0, 3.0, 2)), _t_ms(45))
     t = _t_ms(45) / 1000
     assert (y[(t >= 1.0) & (t < 2.0)] == UNLABELLED).all()
     assert (y[(t >= 2.0) & (t < 3.0)] == 2).all()
 
 
-def test_to4_maps_every_id_and_keeps_unlabelled():
+def test_to4_maps_every_id_and_keeps_unlabelled() -> None:
     y16 = np.array([-1, *range(16)], dtype=np.int8)
     expected = [-1, 0, 1, 2, 3, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0]
     assert to4(y16).tolist() == expected
     assert to4(y16).dtype == y16.dtype
 
 
-def test_negative_start_and_long_end_are_clipped_not_dropped():
-    counts = Counter()
+def test_negative_start_and_long_end_are_clipped_not_dropped() -> None:
+    counts: Counter[str] = Counter()
     out = clean_segments(
         _segs((-0.4, 1.0, 1), (1.0, 9.0, 2)), duration_s=5.0, counts=counts
     )
@@ -57,8 +58,8 @@ def test_negative_start_and_long_end_are_clipped_not_dropped():
     assert counts["zero_length_dropped"] == 0
 
 
-def test_segment_entirely_past_the_end_is_dropped_and_counted():
-    counts = Counter()
+def test_segment_entirely_past_the_end_is_dropped_and_counted() -> None:
+    counts: Counter[str] = Counter()
     out = clean_segments(
         _segs((0.0, 2.0, 0), (6.0, 7.0, 2)), duration_s=5.0, counts=counts
     )
@@ -66,8 +67,8 @@ def test_segment_entirely_past_the_end_is_dropped_and_counted():
     assert counts["zero_length_dropped"] == 1
 
 
-def test_overlaps_are_counted():
-    counts = Counter()
+def test_overlaps_are_counted() -> None:
+    counts: Counter[str] = Counter()
     clean_segments(
         _segs((0.0, 2.0, 0), (1.5, 3.0, 1), (3.0, 4.0, 2)),
         duration_s=5.0,
@@ -76,8 +77,8 @@ def test_overlaps_are_counted():
     assert counts["overlaps"] == 1
 
 
-def test_touching_segments_with_float32_rounding_are_not_overlaps():
-    counts = Counter()
+def test_touching_segments_with_float32_rounding_are_not_overlaps() -> None:
+    counts: Counter[str] = Counter()
     segs = _segs(
         (0.0, 1.5500600337982178, 0), (1.55006, 3.0, 1)
     )  # as stored in float32
