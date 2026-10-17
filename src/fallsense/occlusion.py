@@ -5,6 +5,7 @@ keypoints, NaN where no pose was found - the same array `features.py` takes.
 """
 
 from collections import deque
+from itertools import pairwise
 from typing import Any
 
 import numpy as np
@@ -25,6 +26,7 @@ N_CTX = 4  # since_seen_s, last_hip_y, last_hip_vy, last_edge_dist
 VEL_FRAMES = 5  # present frames used for the hip vertical speed
 MIN_SEEN = 5  # present frames needed before a gap counts as a disappearance
 MIN_GAP_S = 1.0
+FILL_FRAMES = 2  # dropouts this short inside a sighting don't break it
 NEVER_SEEN = (0.5, 0.0, 0.5)  # hip y, hip speed, edge distance before any sighting
 BODY_WINDOW_S = 2.0  # body height = tallest the person stood in this window
 MIN_BODY = 0.02  # body heights below this (/ frame height) are too small to trust
@@ -150,21 +152,23 @@ def find_disappearances(
     every border while their hips dropped faster than `descent_speed` (body
     heights/s), else `left`.
     `start`/`end` are frame indices (`end` exclusive; the clip length if they never
-    came back).
+    came back). Gaps are found on `stable_presence`, so a hidden person flickering
+    back for a frame or two stays one disappearance.
     """
     present = np.asarray(present, dtype=bool)
     ctx = last_seen_context(kp, present, wh, fps, cfg["ctx_cap_s"])
+    stable = stable_presence(present)
     min_gap = round(MIN_GAP_S * fps)
     rows = []
-    i, n = 0, len(present)
+    i, n = 0, len(stable)
     while i < n:
-        if present[i]:
+        if stable[i]:
             i += 1
             continue
         j = i
-        while j < n and not present[j]:
+        while j < n and not stable[j]:
             j += 1
-        if j - i >= min_gap and i >= MIN_SEEN and present[i - MIN_SEEN : i].all():
+        if j - i >= min_gap and i >= MIN_SEEN and stable[i - MIN_SEEN : i].all():
             _, _, vy, edge = ctx[i]  # carried over from the last present frame
             body = _body_height(kp, present, i, wh, fps)
             hidden = edge > cfg["edge_margin"] and vy > cfg["descent_speed"]
@@ -184,6 +188,28 @@ def find_disappearances(
             )
         i = j
     return pd.DataFrame(rows, columns=DISAPPEARANCE_COLUMNS)
+
+
+def _runs(x: npt.NDArray[np.bool_]) -> list[tuple[int, int, bool]]:
+    """(start, end exclusive, value) for each run of equal values."""
+    edges = np.flatnonzero(np.diff(x.astype(np.int8))) + 1
+    bounds = [0, *edges.tolist(), len(x)]
+    return [(s, e, bool(x[s])) for s, e in pairwise(bounds) if e > s]
+
+
+def stable_presence(
+    present: npt.ArrayLike, fill: int = FILL_FRAMES, min_run: int = MIN_SEEN
+) -> npt.NDArray[np.bool_]:
+    """Presence with dropouts of up to `fill` frames inside a sighting filled in,
+    then sightings shorter than `min_run` frames removed (detector blips)."""
+    p = np.asarray(present, dtype=bool).copy()
+    for s, e, v in _runs(p):
+        if not v and 0 < s and e < len(p) and e - s <= fill:
+            p[s:e] = True
+    for s, e, v in _runs(p):
+        if v and e - s < min_run:
+            p[s:e] = False
+    return p
 
 
 def _body_height(
