@@ -112,7 +112,7 @@ Checks in order, printing OK or FAIL per line:
 
 ### Git habits (both)
 
-Branch per task (`b/features`, `b/windows`), small PRs, the other dev reviews before merge, `ruff format` and `pytest -q` before every push, nothing under `data/` ever committed.
+Branch per task (`b/features`, `b/windows`), small PRs, the other dev reviews before merge, `ruff format`, `ruff check`, `mypy` and `pytest -q` before every push (`.githooks/pre-push` runs all four and blocks the push if one fails; turn it on once per clone with `git config core.hooksPath .githooks`). Every function has type hints: ruff's `ANN` rules and mypy (`disallow_untyped_defs`) enforce it, settings in `pyproject.toml`, nothing under `data/` ever committed.
 
 ### Branches and merges to `main` (identical in both docs)
 
@@ -121,7 +121,7 @@ Each dev works on their own branches and merges small pieces to `main` as soon a
 Rules:
 
 - `main` always runs: the only direct push is M1; every other change goes in through a pull request.
-- The other dev reviews and approves every PR; the author has run `ruff format` and `pytest -q` first.
+- The other dev reviews and approves every PR; the author's push passed the pre-push checks (ruff format, ruff check, mypy, pytest).
 - Use squash and merge, then delete the branch.
 - Right after any merge, both devs run `git checkout main` and `git pull`, then `git rebase main` on whatever branch they are on.
 - Merge small and early; a branch should hold one piece, not a day's work.
@@ -374,7 +374,7 @@ class WindowDataset(torch.utils.data.Dataset):
     def __init__(self, npz_path, stats, augment=False, seed=0):
         d = np.load(npz_path)
         self.kp, self.wh, self.y = d["kp"], d["wh"], d["y"]
-        self.present, self.ctx = d["present"], d["ctx"]          # Contract 3 v2
+        self.present, self.ctx = d["present"], d["ctx"]  # Contract 3 v2
         self.mu, self.sd, self.augment = stats["mu"], stats["sd"], augment
         self.rng = np.random.default_rng(seed)
 
@@ -384,7 +384,9 @@ class WindowDataset(torch.utils.data.Dataset):
     def __getitem__(self, i):
         kp, present, ctx = self.kp[i].copy(), self.present[i].copy(), self.ctx[i].copy()
         if self.augment:
-            kp, present, ctx = maybe_occlude(i, kp, present, ctx, self.rng)  # ClipBank + simulate_occlusion
+            kp, present, ctx = maybe_occlude(
+                i, kp, present, ctx, self.rng
+            )  # ClipBank + simulate_occlusion
             kp = augment_kp(kp, self.wh[i], self.rng)
         x = (make_features(kp, self.wh[i], present, ctx) - self.mu) / self.sd
         return torch.from_numpy(x.astype(np.float32)), int(self.y[i])
@@ -418,13 +420,18 @@ Training is cheap (minutes per run on CPU), so run every experiment with three s
 class FallGRU(nn.Module):
     def __init__(self, f_in=51, hidden=64, n_cls=4, layers=2, dropout=0.2):
         super().__init__()
-        self.inp = nn.Sequential(nn.Linear(f_in, hidden), nn.ReLU(), nn.LayerNorm(hidden))
-        self.gru = nn.GRU(hidden, hidden, num_layers=layers, batch_first=True, dropout=dropout)
+        self.inp = nn.Sequential(
+            nn.Linear(f_in, hidden), nn.ReLU(), nn.LayerNorm(hidden)
+        )
+        self.gru = nn.GRU(
+            hidden, hidden, num_layers=layers, batch_first=True, dropout=dropout
+        )
         self.head = nn.Linear(hidden, n_cls)
 
-    def forward(self, x):                 # x: (B, 30, 51)
+    def forward(self, x):  # x: (B, 30, 51)
         h, _ = self.gru(self.inp(x))
-        return self.head(h[:, -1])        # logits from the last time step
+        return self.head(h[:, -1])  # logits from the last time step
+
 
 class FallTCN(nn.Module):
     """3 dilated 1D conv blocks (dilation 1, 2, 4), kernel 5, 64 channels,
@@ -449,7 +456,7 @@ class FallTCN(nn.Module):
 | --- | --- | --- | --- | --- |
 | Core staged | \~20,000 | 5–15 s | 3–10 min | 10–30 min |
 | Core + OCCU | \~23,000 | 5–20 s | 4–12 min | 12–36 min |
-| Core + OCCU + OF-Syn subset | \~50,000 | 15–40 s | 10–25 min | 30–75 min |
+| Core + OCCU + OF-Syn subset (5,335 clips, all elderly) | \~59,000 | 18–48 s | 12–30 min | 36–90 min |
 
 ### 6c. Event logic and score writer in `src/fallsense/calibrate.py` (Dev A is waiting on this)
 

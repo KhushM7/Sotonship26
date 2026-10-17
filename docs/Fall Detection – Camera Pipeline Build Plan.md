@@ -25,7 +25,7 @@ Dev A owns **data in** (cleaning, labelling and skeletonising video, plus the st
 | --- | --- | --- |
 | First thing | Morning download check on A's laptop; project venv | Morning download check on B's laptop; creates repo, venv, lockfile, config, test runner |
 | Videos on own laptop (downloaded overnight) | Le2i, OCCU, OF-Syn, OOPS (test only) | GMDCSA24, CAUCAFall, MCFD |
-| Skeletons extracted on own laptop | Le2i, OCCU, OF-Syn 4,000-clip subset, OOPS | GMDCSA24, CAUCAFall, MCFD |
+| Skeletons extracted on own laptop | Le2i, OCCU, OF-Syn 5,335-clip subset (all 2,000 elderly clips), OOPS | GMDCSA24, CAUCAFall, MCFD |
 | Modules written | `labels.py`, `io_video.py`, `pose.py`, `occlusion.py`, `tracker.py` | `features.py`, `windows.py`, `dataset.py`, `models.py`, `calibrate.py` |
 | Scripts written | `02_inventory.py`, `03_extract_skeletons.py`, `04_qc_skeletons.py`, `08_evaluate.py`, `baseline.py`, `record_staged.py`, `label_tool.py` | `00_check_env.py`, `05_build_windows.py`, `06_train.py`, `07_calibrate.py`, `09_live.py` |
 | Data deliverables | `data/skeletons/**.npz`, `index.csv`, `qc.csv`, staged test set, `DATA_CARD.md` | `data/windows/*.npz`, `models/gru-v1/`, `reports/experiments.csv` |
@@ -271,11 +271,11 @@ occlusion:
 
 ### Git habits
 
-Branch per task (`a/labels`, `b/features`), small PRs, the other dev reviews in under 10 minutes, `ruff format` and `pytest -q` before every push. Never commit anything under `data/`.
+Branch per task (`a/labels`, `b/features`), small PRs, the other dev reviews in under 10 minutes, `ruff format`, `ruff check`, `mypy` and `pytest -q` before every push (`.githooks/pre-push` runs all four and blocks the push if one fails; turn it on once per clone with `git config core.hooksPath .githooks`). Every function has type hints: ruff's `ANN` rules and mypy (`disallow_untyped_defs`) enforce it, settings in `pyproject.toml`. Never commit anything under `data/`.
 
 ## Datasets: what, where, licence
 
-We train on six staged sources plus a 4,000-clip subset of OF-Syn, and test on OOPS genuine accidents; all of it was downloaded overnight with the [`omnifall` package](https://pypi.org/project/omnifall/), split across the two laptops by how much compute each set needs. `omnifall` converts every release to one layout (`C:\fall-data\cache\videos\<dataset>\video\<path>.mp4`) and checks it against the frame-accurate OmniFall labels, so nobody writes per-dataset parsers.
+We train on six staged sources plus a 5,335-clip subset of OF-Syn weighted to elderly bodies, and test on OOPS genuine accidents; all of it was downloaded overnight with the [`omnifall` package](https://pypi.org/project/omnifall/), split across the two laptops by how much compute each set needs. `omnifall` converts every release to one layout (`C:\fall-data\cache\videos\<dataset>\video\<path>.mp4`) and checks it against the frame-accurate OmniFall labels, so nobody writes per-dataset parsers.
 
 | Dataset | Laptop | Original source | Download | Video | Licence (verify with `omnifall sources <ds>`) | Use |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -284,7 +284,7 @@ We train on six staged sources plus a 4,000-clip subset of OF-Syn, and test on O
 | [MCFD](https://www.iro.umontreal.ca/~labimage/Dataset/) | B | Université de Montréal | 3.5 GiB | 24 scenarios × 8 cameras, 1.6 h across all views | Citation requested; check terms | Train / val; high corner cameras like a corridor mount |
 | [Le2i](https://search-data.ubfc.fr/imvia/FR-13002091000019-2024-04-09_Fall-Detection-Dataset.html) | A | Université de Bourgogne (ImViA) | 8.9 GiB | 190 videos, 0.79 h, 4 rooms, 320×240 at 25 fps | Research use; check terms | Train / val / test |
 | [OCCU](https://doi.org/10.5281/zenodo.15494102) | A | Zenodo | 10.1 GiB | 2 views, 0.48 h, falls partly hidden by furniture | Check terms | Train / val / test; occlusion |
-| [OF-Syn](https://huggingface.co/datasets/simplexsigil2/omnifall) | A | Hugging Face | 9.0 GiB | 12,000 synthetic clips, 16.9 h, with age group, BMI band and camera metadata; we extract a 4,000-clip subset | Non-commercial; check card | Train, plus subgroup test (older, heavier bodies) |
+| [OF-Syn](https://huggingface.co/datasets/simplexsigil2/omnifall) | A | Hugging Face | 9.0 GiB | 12,000 synthetic clips, 16.9 h, with age group, BMI band and camera metadata; we extract a 5,335-clip subset with all 2,000 elderly clips | Non-commercial; check card | Train, plus subgroup test (older, heavier bodies) |
 | [OOPS-Fall](https://oops.cs.columbia.edu/data/) | A | Columbia, via `omnifall` | streamed \~45 GiB, kept 2.6 GiB | 818 genuine accident clips, 2.65 h | Non-commercial; check terms | Out-of-domain test only, never trained on |
 | [OmniFall labels](https://huggingface.co/datasets/simplexsigil2/omnifall) | both | Hugging Face | a few MB | Segment labels and cross-subject splits for all of the above | CC BY-NC-SA 4.0 | Labels and splits |
 
@@ -302,10 +302,10 @@ Each laptop ran `omnifall prepare <dataset> --workers 4` overnight (up to 3 retr
 4. **Anything else failed or stopped part-way**: rerun `omnifall prepare <dataset> --workers 4`; it reuses archives already downloaded.
 5. `omnifall cite <dataset>` for each, pasted into `DATA_CARD.md` with the terms printed by `omnifall sources <dataset>`.
 
-OF-Syn subset (Dev A): all 12,000 clips are on disk, but extracting all of them would take 1.7–3.4 hours, so start with 4,000.
+OF-Syn subset (Dev A): all 12,000 clips are on disk, but extracting all of them would take 1.7–3.4 hours, so extract a 5,335-clip subset: every elderly clip (the population this product is for) plus a third of each other age group.
 
 1. `omnifall.load("of-syn")` gives rows with `age_group` and `bmi_band`.
-2. Take unique paths, sample 4,000 stratified by `age_group` (pandas `groupby("age_group").sample(frac=..., random_state=1337)`), and save to `data/of_syn_subset.csv`. Keep every elderly clip in the subset if that group is small.
+2. Take unique paths. Age groups are coded 0 toddler, 1 child, 2 teen, 3 young adult, 4 middle-aged, 5 elderly, 2,000 clips each. Keep all 2,000 elderly clips and sample a third of each other group (`groupby("age_group").sample(frac=1/3, random_state=1337)`, 667 each); save to `data/of_syn_subset.csv` (5,335 clips: train 4,274, val 522, test 539; elderly test 202 clips instead of 54 with an even split).
 3. Extract with `03_extract_skeletons.py --datasets of-syn --clip-list data/of_syn_subset.csv`.
 4. If extraction runs faster than expected, add more clips later; the rest stay on disk.
 
@@ -370,12 +370,14 @@ Collapse the 10 staged classes into the 4 the model predicts. `stand_up` goes to
 TO4 = np.array([0, 1, 2, 3, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0], dtype=np.int8)
 UNLABELLED = -1
 
+
 def clean_segments(segs: pd.DataFrame, duration_s: float) -> pd.DataFrame:
     s = segs.copy()
     s["start"] = s["start"].clip(lower=0)
     s["end"] = s["end"].clip(upper=duration_s)
     s = s[s["end"] > s["start"]].sort_values("start")
     return s.reset_index(drop=True)
+
 
 def frame_labels(segs: pd.DataFrame, t_ms: np.ndarray) -> np.ndarray:
     """16-class id per kept frame; later segments win on overlap; gaps = -1."""
@@ -384,6 +386,7 @@ def frame_labels(segs: pd.DataFrame, t_ms: np.ndarray) -> np.ndarray:
     for start, end, lab in segs[["start", "end", "label"]].itertuples(index=False):
         y[(t >= start) & (t < end)] = lab
     return y
+
 
 def to4(y16: np.ndarray) -> np.ndarray:
     out = np.full_like(y16, UNLABELLED)
@@ -414,25 +417,40 @@ Every clip becomes a 15 fps skeleton file once; everything after that reads only
 
 ```python
 import cv2, mediapipe as mp, numpy as np
+
 V = mp.tasks.vision
+
 
 class PoseExtractor:
     """One instance per clip (VIDEO mode needs strictly increasing timestamps)."""
+
     def __init__(self, model_path, min_det=0.5, min_presence=0.5, min_track=0.5):
         opts = V.PoseLandmarkerOptions(
             base_options=mp.tasks.BaseOptions(model_asset_path=str(model_path)),
-            running_mode=V.RunningMode.VIDEO, num_poses=1,
+            running_mode=V.RunningMode.VIDEO,
+            num_poses=1,
             min_pose_detection_confidence=min_det,
             min_pose_presence_confidence=min_presence,
-            min_tracking_confidence=min_track)
+            min_tracking_confidence=min_track,
+        )
         self.lm = V.PoseLandmarker.create_from_options(opts)
 
     def __call__(self, frame_bgr, t_ms):
-        rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)   # OpenCV is BGR, MediaPipe wants RGB
-        res = self.lm.detect_for_video(mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb), t_ms)
+        rgb = cv2.cvtColor(
+            frame_bgr, cv2.COLOR_BGR2RGB
+        )  # OpenCV is BGR, MediaPipe wants RGB
+        res = self.lm.detect_for_video(
+            mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb), t_ms
+        )
         if not res.pose_landmarks:
-            return np.full((33, 4), np.nan, np.float32), np.full((33, 3), np.nan, np.float32), False
-        kp = np.array([[p.x, p.y, p.z, p.visibility] for p in res.pose_landmarks[0]], np.float32)
+            return (
+                np.full((33, 4), np.nan, np.float32),
+                np.full((33, 3), np.nan, np.float32),
+                False,
+            )
+        kp = np.array(
+            [[p.x, p.y, p.z, p.visibility] for p in res.pose_landmarks[0]], np.float32
+        )
         w = np.array([[p.x, p.y, p.z] for p in res.pose_world_landmarks[0]], np.float32)
         return kp, w, True
 
@@ -452,7 +470,7 @@ Benchmark before the full run: on 5 clips per dataset, time `pose_landmarker_lit
 6. Expected load: about 164,000 frames across the four core datasets with all MCFD views (extras are costed in the compute budget section). At 15–30 fps per worker and 6 workers that is 20–30 minutes per laptop. If the ETA passes 2 hours, drop MCFD to 4 of its 8 cameras and log which.
 7. Smoke test first: `--datasets GMDCSA24 --limit 5`, open one .npz, check shapes and that `detected.mean()` is above 0.8 for a standing-walking clip.
 
-Run split: B extracts GMDCSA24, CAUCAFall and MCFD on B's laptop (about 120,000 frames, 15–25 min). A extracts Le2i and OCCU first (about 70,000 frames, 10–15 min), then the OF-Syn subset and OOPS (about 440,000 frames, 50–100 min) while B trains. Each zips `data/skeletons/{dataset}/` into the shared team folder (OneDrive or Google Drive; under 1 GB in total) and the other unzips it into the same path.
+Run split: B extracts GMDCSA24, CAUCAFall and MCFD on B's laptop (about 120,000 frames, 15–25 min). A extracts Le2i and OCCU first (about 70,000 frames, 10–15 min), then the OF-Syn subset and OOPS (about 540,000 frames, 65–125 min) while B trains. Each zips `data/skeletons/{dataset}/` into the shared team folder (OneDrive or Google Drive; under 1 GB in total) and the other unzips it into the same path.
 
 ### A3 – `scripts/04_qc_skeletons.py`
 
@@ -532,7 +550,7 @@ class WindowDataset(torch.utils.data.Dataset):
     def __init__(self, npz_path, stats, augment=False, seed=0):
         d = np.load(npz_path)
         self.kp, self.wh, self.y = d["kp"], d["wh"], d["y"]
-        self.present, self.ctx = d["present"], d["ctx"]          # Contract 3 v2
+        self.present, self.ctx = d["present"], d["ctx"]  # Contract 3 v2
         self.mu, self.sd, self.augment = stats["mu"], stats["sd"], augment
         self.rng = np.random.default_rng(seed)
 
@@ -542,7 +560,9 @@ class WindowDataset(torch.utils.data.Dataset):
     def __getitem__(self, i):
         kp, present, ctx = self.kp[i].copy(), self.present[i].copy(), self.ctx[i].copy()
         if self.augment:
-            kp, present, ctx = maybe_occlude(i, kp, present, ctx, self.rng)  # ClipBank + simulate_occlusion
+            kp, present, ctx = maybe_occlude(
+                i, kp, present, ctx, self.rng
+            )  # ClipBank + simulate_occlusion
             kp = augment_kp(kp, self.wh[i], self.rng)
         x = (make_features(kp, self.wh[i], present, ctx) - self.mu) / self.sd
         return torch.from_numpy(x.astype(np.float32)), int(self.y[i])
@@ -591,13 +611,18 @@ The rule from the brief: a person whose keypoint box is wider than tall and whos
 class FallGRU(nn.Module):
     def __init__(self, f_in=51, hidden=64, n_cls=4, layers=2, dropout=0.2):
         super().__init__()
-        self.inp = nn.Sequential(nn.Linear(f_in, hidden), nn.ReLU(), nn.LayerNorm(hidden))
-        self.gru = nn.GRU(hidden, hidden, num_layers=layers, batch_first=True, dropout=dropout)
+        self.inp = nn.Sequential(
+            nn.Linear(f_in, hidden), nn.ReLU(), nn.LayerNorm(hidden)
+        )
+        self.gru = nn.GRU(
+            hidden, hidden, num_layers=layers, batch_first=True, dropout=dropout
+        )
         self.head = nn.Linear(hidden, n_cls)
 
-    def forward(self, x):                 # x: (B, 30, 51)
+    def forward(self, x):  # x: (B, 30, 51)
         h, _ = self.gru(self.inp(x))
-        return self.head(h[:, -1])        # logits from the last time step
+        return self.head(h[:, -1])  # logits from the last time step
+
 
 class FallTCN(nn.Module):
     """Alternative: 3 dilated 1D conv blocks (dilation 1, 2, 4), kernel 5, 64 channels,
@@ -637,7 +662,7 @@ class FallTCN(nn.Module):
 | --- | --- | --- | --- | --- |
 | Core staged | \~20,000 | 5–15 s | 3–10 min | 10–30 min |
 | Core + OCCU | \~23,000 | 5–20 s | 4–12 min | 12–36 min |
-| Core + OCCU + OF-Syn subset (4,000 clips) | \~50,000 | 15–40 s | 10–25 min | 30–75 min |
+| Core + OCCU + OF-Syn subset (5,335 clips) | \~59,000 | 18–48 s | 12–30 min | 36–90 min |
 
 These are estimates for a recent 8–12-core laptop; replace them with measured numbers after the first run.
 
@@ -741,7 +766,7 @@ Then run `03_extract_skeletons.py --datasets staged`, add the rows to `index.csv
 
 ## Compute budget, order of work and risks
 
-Downloads are finished, so the remaining cost is CPU time: pose extraction takes about 15–25 min on B's laptop and 1–2 h on A's, and each training run takes minutes. Train on B's laptop while A's keeps extracting the extras.
+Downloads are finished, so the remaining cost is CPU time: pose extraction takes about 15–25 min on B's laptop and 1.2–2.3 h on A's, and each training run takes minutes. Train on B's laptop while A's keeps extracting the extras.
 
 ### Why this data
 
@@ -754,10 +779,10 @@ The four core sets are enough to train a model and beat the baseline. OCCU, the 
 | MCFD (8 views) | B | 1.6 h | \~86,000 | 10–20 min | \~10,000 | High corner cameras |
 | Le2i | A | 0.79 h | \~43,000 | 5–10 min | \~5,500 | Four room types |
 | OCCU (2 views) | A | 0.48 h | \~26,000 | 3–6 min | \~3,000 | Falls behind furniture |
-| OF-Syn subset (4,000 clips) | A | \~5.6 h | \~300,000 | 35–70 min | \~26,000 | Older and heavier bodies |
+| OF-Syn subset (5,335 clips, all elderly) | A | \~7.5 h | \~400,000 | 45–95 min | \~35,000 | Older and heavier bodies |
 | OOPS (test only) | A | 2.65 h | \~143,000 | 15–30 min | 0 | Real accidents |
 
-Totals: B about 120,000 frames (15–25 min); A about 510,000 frames (1–2 h). These assume 75–150 frames/s across 6 workers on an 8–12-core laptop; replace them with the rate measured on the first clips. Training on everything (about 50,000 train windows) takes 10–25 min per run; see the Phase 5 table.
+Totals: B about 120,000 frames (15–25 min); A about 610,000 frames (1.2–2.3 h). These assume 75–150 frames/s across 6 workers on an 8–12-core laptop; replace them with the rate measured on the first clips. Training on everything (about 59,000 train windows) takes 12–30 min per run; see the Phase 5 table.
 
 If A's extraction runs long, copy half of the OF-Syn subset videos (about 1.5 GiB) to B's laptop, which has room under its 30 GB cap, and run `03_extract_skeletons.py --datasets of-syn --clip-list` there with the other half of the list.
 
