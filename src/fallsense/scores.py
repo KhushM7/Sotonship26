@@ -1,5 +1,7 @@
 """Contract 4: frame scores, reports/scores/{model}/{split}.parquet."""
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
@@ -35,11 +37,16 @@ def validate_scores(df: pd.DataFrame) -> None:
         raise ValueError("probabilities must sum to 1 per row")
 
 
-def save_scores(model: str, split: str, df: pd.DataFrame) -> None:
-    """Cast to the contract dtypes, validate and write the parquet file."""
+def save_scores(
+    model: str, split: str, df: pd.DataFrame, path: Path | None = None
+) -> None:
+    """Cast to the contract dtypes, validate and write the parquet file.
+
+    `path` overrides the contract location.
+    """
     df = df[list(COLUMNS)].astype(COLUMNS).reset_index(drop=True)
     validate_scores(df)
-    path = scores_path(model, split)
+    path = scores_path(model, split) if path is None else Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     df.to_parquet(path, index=False)
 
