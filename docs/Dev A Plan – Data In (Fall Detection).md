@@ -130,7 +130,7 @@ $env:OMNIFALL_ROOT = "C:\fall-data\cache\videos"
 
 ### Git habits (both)
 
-Branch per task (`a/labels`, `a/pose`, `b/features`), small PRs, the other dev reviews before merge, `ruff format` and `pytest -q` before every push, nothing under `data/` ever committed.
+Branch per task (`a/labels`, `a/pose`, `b/features`), small PRs, the other dev reviews before merge, `ruff format`, `ruff check`, `mypy` and `pytest -q` before every push (`.githooks/pre-push` runs all four and blocks the push if one fails; turn it on once per clone with `git config core.hooksPath .githooks`). Every function has type hints: ruff's `ANN` rules and mypy (`disallow_untyped_defs`) enforce it, settings in `pyproject.toml`, nothing under `data/` ever committed.
 
 ### Branches and merges to `main` (identical in both docs)
 
@@ -139,7 +139,7 @@ Each dev works on their own branches and merges small pieces to `main` as soon a
 Rules:
 
 - `main` always runs: the only direct push is M1; every other change goes in through a pull request.
-- The other dev reviews and approves every PR; the author has run `ruff format` and `pytest -q` first.
+- The other dev reviews and approves every PR; the author's push passed the pre-push checks (ruff format, ruff check, mypy, pytest).
 - Use squash and merge, then delete the branch.
 - Right after any merge, both devs run `git checkout main` and `git pull`, then `git rebase main` on whatever branch they are on.
 - Merge small and early; a branch should hold one piece, not a day's work.
@@ -340,25 +340,38 @@ def iter_frames(path, target_fps=15):
 
 ```python
 import cv2, mediapipe as mp, numpy as np
+
 V = mp.tasks.vision
+
 
 class PoseExtractor:
     """One instance per clip (VIDEO mode needs strictly increasing timestamps)."""
+
     def __init__(self, model_path, min_det=0.5, min_presence=0.5, min_track=0.5):
         opts = V.PoseLandmarkerOptions(
             base_options=mp.tasks.BaseOptions(model_asset_path=str(model_path)),
-            running_mode=V.RunningMode.VIDEO, num_poses=1,
+            running_mode=V.RunningMode.VIDEO,
+            num_poses=1,
             min_pose_detection_confidence=min_det,
             min_pose_presence_confidence=min_presence,
-            min_tracking_confidence=min_track)
+            min_tracking_confidence=min_track,
+        )
         self.lm = V.PoseLandmarker.create_from_options(opts)
 
     def __call__(self, frame_bgr, t_ms):
-        rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)   # MediaPipe wants RGB
-        res = self.lm.detect_for_video(mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb), t_ms)
+        rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)  # MediaPipe wants RGB
+        res = self.lm.detect_for_video(
+            mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb), t_ms
+        )
         if not res.pose_landmarks:
-            return np.full((33, 4), np.nan, np.float32), np.full((33, 3), np.nan, np.float32), False
-        kp = np.array([[p.x, p.y, p.z, p.visibility] for p in res.pose_landmarks[0]], np.float32)
+            return (
+                np.full((33, 4), np.nan, np.float32),
+                np.full((33, 3), np.nan, np.float32),
+                False,
+            )
+        kp = np.array(
+            [[p.x, p.y, p.z, p.visibility] for p in res.pose_landmarks[0]], np.float32
+        )
         w = np.array([[p.x, p.y, p.z] for p in res.pose_world_landmarks[0]], np.float32)
         return kp, w, True
 
@@ -400,12 +413,14 @@ OmniFall classes: 0 walk, 1 fall, 2 fallen, 3 sit\_down, 4 sitting, 5 lie\_down,
 TO4 = np.array([0, 1, 2, 3, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0], dtype=np.int8)
 UNLABELLED = -1
 
+
 def clean_segments(segs: pd.DataFrame, duration_s: float) -> pd.DataFrame:
     s = segs.copy()
     s["start"] = s["start"].clip(lower=0)
     s["end"] = s["end"].clip(upper=duration_s)
     s = s[s["end"] > s["start"]].sort_values("start")
     return s.reset_index(drop=True)
+
 
 def frame_labels(segs: pd.DataFrame, t_ms: np.ndarray) -> np.ndarray:
     """16-class id per kept frame; later segments win on overlap; gaps = -1."""
@@ -415,11 +430,13 @@ def frame_labels(segs: pd.DataFrame, t_ms: np.ndarray) -> np.ndarray:
         y[(t >= start) & (t < end)] = lab
     return y
 
+
 def to4(y16: np.ndarray) -> np.ndarray:
     out = np.full_like(y16, UNLABELLED)
     m = y16 >= 0
     out[m] = TO4[y16[m]]
     return out
+
 
 def segments_for(dataset: str, path: str) -> pd.DataFrame:
     """All OmniFall segments for one clip (cache the loaded configs)."""
@@ -470,10 +487,10 @@ Spec: "Occlusion handling – schema_version 2" in Step 2. Needs M18 (config v2)
 
 ### 4e. OF-Syn subset and OOPS (runs while Dev B trains)
 
-- [ ] Subset: `omnifall.load("of-syn")`, unique paths, sample 4,000 stratified by `age_group` (`groupby("age_group").sample(frac=..., random_state=1337)`; keep all elderly clips if that group is small). Save `data\of_syn_subset.csv` and commit a copy to `configs/` on branch a/extras and merge by pull request (M12) before S11.
-- [ ] `python scripts\02_inventory.py --datasets of-syn OOPS`
-- [ ] `python scripts\03_extract_skeletons.py --datasets of-syn --clip-list data\of_syn_subset.csv` (estimate 35–70 min).
-- [ ] `python scripts\03_extract_skeletons.py --datasets OOPS` (estimate 15–30 min).
+- [ ] Subset: `omnifall.load("metadata-syn")`, unique paths; age groups are 0 toddler, 1 child, 2 teen, 3 young adult, 4 middle-aged, 5 elderly (2,000 each). Keep **all 2,000 elderly clips** and sample a third of every other group (`groupby("age_group").sample(frac=1/3, random_state=1337)`), 5,335 clips in total, so the elderly subgroup gets 202 test clips instead of 54. Save `data\of_syn_subset.csv` and commit a copy to `configs/` on branch a/extras and merge by pull request (M12) before S11. ⏳ *built: 5,335 clips (train 4,274 / val 522 / test 539; elderly 2,000); the earlier 4,002-clip version is a strict subset, so nothing extracted is wasted; waiting to commit on a/extras (M12)*
+- [ ] `python scripts\02_inventory.py --datasets of-syn OOPS` ⏳ *running since 14:19; OF-Syn probing is slow (seeking to the last AV1 frame decodes the whole clip, ~3.5 s per clip under load), about 100 min for all 12,000 clips*
+- [ ] `python scripts\03_extract_skeletons.py --datasets of-syn --clip-list data\of_syn_subset.csv` (estimate 45–95 min for 5,335 clips; extra 1,333 elderly clips add about 12–25 min). ⏳ *queued after the inventory, on the 4,002-clip list; the 1,333 extra elderly clips need one more run with the 5,335-clip list (resumes, skips done clips)*
+- [ ] `python scripts\03_extract_skeletons.py --datasets OOPS` (estimate 15–30 min). ⏳ *queued after OF-Syn*
 - [ ] If this runs long, copy half of the subset's OF-Syn videos (about 1.5 GiB) to Dev B with a second clip list; Dev B has room under 30 GB.
 - [ ] Rerun `04_qc_skeletons.py`; upload the new zips, `index.csv` and QC plots.
 - [ ] **SYNC S11 (A → B)** – Dev B downloads them, rebuilds windows, and reads out window counts for OCCU, OF-Syn and OOPS. Tick when confirmed.
