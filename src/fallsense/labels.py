@@ -4,6 +4,7 @@ from collections import Counter
 from functools import cache
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 from fallsense.config import load_config
@@ -52,7 +53,7 @@ def load_labels(dataset: str) -> pd.DataFrame:
 @cache
 def _segments_by_path(dataset: str) -> dict[str, pd.DataFrame]:
     return {
-        path: g.reset_index(drop=True)
+        str(path): g.reset_index(drop=True)
         for path, g in load_labels(dataset).groupby("path")
     }
 
@@ -66,7 +67,7 @@ def segments_for(dataset: str, path: str) -> pd.DataFrame:
 
 
 def clean_segments(
-    segs: pd.DataFrame, duration_s: float, counts: Counter | None = None
+    segs: pd.DataFrame, duration_s: float, counts: Counter[str] | None = None
 ) -> pd.DataFrame:
     """Clip segments to [0, duration_s], drop empty ones, sort by start.
 
@@ -93,7 +94,7 @@ def clean_segments(
     return s
 
 
-def frame_labels(segs: pd.DataFrame, t_ms: np.ndarray) -> np.ndarray:
+def frame_labels(segs: pd.DataFrame, t_ms: npt.ArrayLike) -> npt.NDArray[np.int8]:
     """16-class id per kept frame; later segments win on overlap; gaps = -1."""
     t = np.asarray(t_ms) / 1000.0
     y = np.full(len(t), UNLABELLED, dtype=np.int8)
@@ -102,7 +103,7 @@ def frame_labels(segs: pd.DataFrame, t_ms: np.ndarray) -> np.ndarray:
     return y
 
 
-def to4(y16: np.ndarray) -> np.ndarray:
+def to4(y16: npt.NDArray[np.int8]) -> npt.NDArray[np.int8]:
     """Map OmniFall ids 0-15 to our 4 classes; -1 stays -1."""
     out = np.full_like(y16, UNLABELLED)
     m = y16 >= 0

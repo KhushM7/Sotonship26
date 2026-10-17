@@ -1,6 +1,9 @@
 """Contract 3: window arrays, data/windows/{split}.npz."""
 
+from typing import Any, cast
+
 import numpy as np
+import numpy.typing as npt
 
 from fallsense.config import windows_path
 
@@ -18,7 +21,7 @@ SCHEMA = {
 }
 
 
-def validate_windows(arrays: dict) -> None:
+def validate_windows(arrays: dict[str, npt.NDArray[Any]]) -> None:
     """Raise ValueError unless `arrays` matches Contract 3."""
     missing = set(SCHEMA) - set(arrays)
     if missing:
@@ -34,7 +37,14 @@ def validate_windows(arrays: dict) -> None:
         raise ValueError(f"y must be in 0..{N_CLASSES - 1}")
 
 
-def save_windows(split, kp, wh, y, clip_id, end_frame) -> None:
+def save_windows(
+    split: str,
+    kp: npt.ArrayLike,
+    wh: npt.ArrayLike,
+    y: npt.ArrayLike,
+    clip_id: npt.ArrayLike,
+    end_frame: npt.ArrayLike,
+) -> None:
     """Cast to the contract dtypes, validate and write data/windows/{split}.npz."""
     arrays = {
         key: np.asarray(val, dtype=SCHEMA[key][0])
@@ -43,10 +53,10 @@ def save_windows(split, kp, wh, y, clip_id, end_frame) -> None:
     validate_windows(arrays)
     path = windows_path(split)
     path.parent.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(path, **arrays)
+    np.savez_compressed(path, **cast("dict[str, Any]", arrays))
 
 
-def load_windows(split) -> dict:
+def load_windows(split: str) -> dict[str, npt.NDArray[Any]]:
     """Load and validate data/windows/{split}.npz."""
     with np.load(windows_path(split)) as d:
         arrays = {key: d[key] for key in SCHEMA}

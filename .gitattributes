@@ -1,0 +1,2 @@
+# Git hooks are shell scripts; Windows line endings break their #! line.
+.githooks/* text eol=lf

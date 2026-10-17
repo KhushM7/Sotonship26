@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -5,7 +7,7 @@ import pytest
 from fallsense import scores
 
 
-def _toy(n=6):
+def _toy(n: int = 6) -> pd.DataFrame:
     p = np.random.dirichlet(np.ones(4), size=n)
     return pd.DataFrame(
         {
@@ -21,13 +23,13 @@ def _toy(n=6):
 
 
 @pytest.fixture(autouse=True)
-def tmp_scores(tmp_path, monkeypatch):
+def tmp_scores(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         scores, "scores_path", lambda m, s: tmp_path / m / f"{s}.parquet"
     )
 
 
-def test_round_trip_dtypes(tmp_path):
+def test_round_trip_dtypes(tmp_path: Path) -> None:
     scores.save_scores("e1", "val", _toy())
     df = scores.load_scores("e1", "val")
     assert list(df.columns) == list(scores.COLUMNS)
@@ -36,25 +38,25 @@ def test_round_trip_dtypes(tmp_path):
         assert df[col].dtype == dtype
 
 
-def test_empty_is_valid():
+def test_empty_is_valid() -> None:
     scores.save_scores("e1", "oops", _toy(0))
     assert len(scores.load_scores("e1", "oops")) == 0
 
 
-def test_probabilities_must_sum_to_one():
+def test_probabilities_must_sum_to_one() -> None:
     df = _toy()
     df["p_upright"] += 0.5
     with pytest.raises(ValueError):
         scores.save_scores("e1", "val", df)
 
 
-def test_nan_rejected():
+def test_nan_rejected() -> None:
     df = _toy()
     df.loc[0, "t_s"] = np.nan
     with pytest.raises(ValueError, match="NaN"):
         scores.save_scores("e1", "val", df)
 
 
-def test_missing_column_rejected():
+def test_missing_column_rejected() -> None:
     with pytest.raises(KeyError):
         scores.save_scores("e1", "val", _toy().drop(columns="p_fallen"))
