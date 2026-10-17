@@ -1,0 +1,9 @@
+t_high: 0.5
+t_low: 0.5
+a: -0.2
+h: 0.9
+train_sets:
+- GMDCSA24
+- caucafall
+- le2i
+- mcfd

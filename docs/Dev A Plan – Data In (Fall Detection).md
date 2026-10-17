@@ -503,7 +503,7 @@ Disk: once QC passes, converted videos can be deleted, but keep them until S14 i
 
 The evaluator scores every system the same way, and the baseline gives every model number something honest to beat. Both depend on code from Dev B: `features.py` (S8) and the event logic in `calibrate.py` (S9).
 
-- [ ] **SYNC S8 (B → A)** – Dev B says `features.py` is merged. You pull and run `pytest tests/test_features.py`; it passes. Tick when confirmed.
+- [x] **SYNC S8 (B → A)** – Dev B says `features.py` is merged. You pull and run `pytest tests/test_features.py`; it passes. Tick when confirmed. ✅ *test_features.py passes on laptop A against merged features.py*
 
 ### 5a. `src/fallsense/metrics.py`
 
@@ -525,28 +525,28 @@ Definitions (copy them into the README word for word):
 | Median latency | over detected events |
 | Window macro F1, confusion matrix | over evaluation windows, 4 classes |
 
-- [ ] Bootstrap 95% intervals over **clips** (1,000 resamples with replacement), never over windows.
-- [ ] Alerts come from Dev B's `alerts_from_scores(scores, thresholds)`; do not reimplement the event logic.
-- [ ] **SYNC S9 (B → A)** – Dev B says `alerts_from_scores` and the contract-4 score writer are merged. You run `tests/test_metrics.py` against them; it passes. Tick when confirmed.
-- [ ] `tests/test_metrics.py`: a perfect detector gives sensitivity 1 and zero false alerts; an alert 11 s after a fall ends counts as false; two alerts inside one 30 s refractory window count once; bootstrap intervals contain the point estimate.
+- [x] Bootstrap 95% intervals over **clips** (1,000 resamples with replacement), never over windows. ✅ *metrics.bootstrap: percentile intervals, clips resampled*
+- [x] Alerts come from Dev B's `alerts_from_scores(scores, thresholds)`; do not reimplement the event logic. ✅ *FALL and ON FLOOR count as alarms*
+- [x] **SYNC S9 (B → A)** – Dev B says `alerts_from_scores` and the contract-4 score writer are merged. You run `tests/test_metrics.py` against them; it passes. Tick when confirmed. ✅ *tests/test_metrics.py (9 tests) passes against calibrate.alerts_from_scores on main*
+- [x] `tests/test_metrics.py`: a perfect detector gives sensitivity 1 and zero false alerts; an alert 11 s after a fall ends counts as false; two alerts inside one 30 s refractory window count once; bootstrap intervals contain the point estimate. ✅
 
 ### 5b. `src/fallsense/baseline.py`
 
 The rule from the brief: keypoint box wider than tall and hips near the floor for over 2 s.
 
-- [ ] Per frame, from `make_features` on the whole clip: `low = log_bbox_aspect > a and hip_height < h`.
-- [ ] FALL fires when `low` has held for 30 consecutive frames; re-arms after 30 frames of not-low.
-- [ ] Grid search `a` in {−0.2, 0, 0.2, 0.4} and `h` in {0.3, 0.5, 0.7, 0.9} on **train** clips only, maximising event F1.
-- [ ] Write contract-4 score files to `reports\scores\baseline\{split}.parquet` every 3 frames: `p_falling` = 1 on the frame the rule fires, `p_fallen` = `low`, others 0. Save `t_high = t_low = 0.5` in `reports\scores\baseline\thresholds.yaml`.
+- [x] Per frame, from `make_features` on the whole clip: `low = log_bbox_aspect > a and hip_height < h`. ✅ *src/fallsense/baseline.py; `low` also needs the pose present*
+- [x] FALL fires when `low` has held for 30 consecutive frames; re-arms after 30 frames of not-low. ✅
+- [x] Grid search `a` in {−0.2, 0, 0.2, 0.4} and `h` in {0.3, 0.5, 0.7, 0.9} on **train** clips only, maximising event F1. ✅ *scripts/baseline_e0.py on 380 core train clips (313 falls): best a = -0.2, h = 0.9 (train event F1 0.69); both at the grid edge, kept as planned*
+- [x] Write contract-4 score files to `reports\scores\baseline\{split}.parquet` every 3 frames: `p_falling` = 1 on the frame the rule fires, `p_fallen` = `low`, others 0. Save `t_high = t_low = 0.5` in `reports\scores\baseline\thresholds.yaml`. ✅ *thresholds.yaml also records a, h and the train sets*
 
 ### 5c. `scripts/08_evaluate.py`
 
-- [ ] Inputs: `--model <run>` (score folder) and `--split`; reads contract-4 scores, `index.csv`, OmniFall labels, and the run's `thresholds.yaml`.
-- [ ] Report three rows: rule baseline; model with one threshold (`t_low = t_high`); model with the CHECK band. Once M20 is in, add model + tracker and baseline + tracker (tracker alerts from Contract 5 are CHECK level).
-- [ ] Break down by dataset, by `qc_pass`, by OF-Syn `age_group` and `bmi_band`, and for `staged_test` by lighting and occlusion tags from file names. Report OCCU test and the staged hidden-fall clips as their own rows, with and without the tracker and with and without simulated occlusion (E7).
-- [ ] Plot the coverage–error curve: sweep CHECK band width from 0 to max; missed falls + false FALLs per hour against coverage.
-- [ ] Write `reports\eval_<run>_<split>.json` and a one-page `.md` with every number next to its sample size (events, clips, hours).
-- [ ] Run the baseline (E0) on val, then rebase on main and merge by pull request from branch a/eval (M11); Dev B needs it on main for S10.
+- [x] Inputs: `--model <run>` (score folder) and `--split`; reads contract-4 scores, `index.csv`, OmniFall labels, and the run's `thresholds.yaml`. ✅ *also --t-high/--t-low until 07_calibrate writes thresholds.yaml; --windows for window F1*
+- [x] Report three rows: rule baseline; model with one threshold (`t_low = t_high`); model with the CHECK band. Once M20 is in, add model + tracker and baseline + tracker (tracker alerts from Contract 5 are CHECK level). ✅ *tracker rows appear automatically once reports/alerts/tracker/<split>.parquet exists (M20)*
+- [ ] Break down by dataset, by `qc_pass`, by OF-Syn `age_group` and `bmi_band`, and for `staged_test` by lighting and occlusion tags from file names. Report OCCU test and the staged hidden-fall clips as their own rows, with and without the tracker and with and without simulated occlusion (E7). ⏳ *dataset, qc_pass, OF-Syn age and BMI, staged lighting/occlusion done; with/without tracker after M20; E7 = evaluating the two runs*
+- [x] Plot the coverage–error curve: sweep CHECK band width from 0 to max; missed falls + false FALLs per hour against coverage. ✅ *reports/eval_<run>_<split>_coverage.png plus table*
+- [x] Write `reports\eval_<run>_<split>.json` and a one-page `.md` with every number next to its sample size (events, clips, hours). ✅
+- [ ] Run the baseline (E0) on val, then rebase on main and merge by pull request from branch a/eval (M11); Dev B needs it on main for S10. ⏳ *E0 val done: FALL sensitivity 68.8% (56.7–80.6%), 167.9 false FALLs/h over 0.75 h of normal activity (mostly intentional lie-downs in OF-Syn), OCCU 0%; PR from a/eval pending*
 - [ ] **SYNC S10 (A → B)** – tell Dev B the evaluator and E0 val results are merged. Dev B runs `08_evaluate.py` on their E1 val scores; you both read out sensitivity and false FALL alerts per hour for E0 and E1. Tick when the numbers look sensible to both.
 
 ### 5d. `src/fallsense/tracker.py` (occlusion handling part 2)
