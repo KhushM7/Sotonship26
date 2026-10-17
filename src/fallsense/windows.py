@@ -42,9 +42,18 @@ def validate_windows(arrays: dict[str, npt.NDArray[Any]]) -> None:
         raise ValueError("ctx must be finite")
 
 
-def save_windows(split, kp, wh, y, clip_id, end_frame, present, ctx) -> None:
+def save_windows(
+    split: str,
+    kp: npt.ArrayLike,
+    wh: npt.ArrayLike,
+    y: npt.ArrayLike,
+    clip_id: npt.ArrayLike,
+    end_frame: npt.ArrayLike,
+    present: npt.ArrayLike,
+    ctx: npt.ArrayLike,
+) -> None:
     """Cast to the contract dtypes, validate and write data/windows/{split}.npz."""
-    arrays = {
+    arrays: dict[str, npt.NDArray[Any]] = {
         key: np.asarray(val, dtype=SCHEMA[key][0])
         for key, val in zip(SCHEMA, (kp, wh, y, clip_id, end_frame, present, ctx))
     }

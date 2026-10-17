@@ -112,7 +112,7 @@ Checks in order, printing OK or FAIL per line:
 
 ### Git habits (both)
 
-Branch per task (`b/features`, `b/windows`), small PRs, the other dev reviews before merge, `ruff format`, `ruff check`, `mypy` and `pytest -q` before every push (`.githooks/pre-push` runs all four and blocks the push if one fails; turn it on once per clone with `git config core.hooksPath .githooks`). Every function has type hints: ruff's `ANN` rules and mypy (`disallow_untyped_defs`) enforce it, settings in `pyproject.toml`, nothing under `data/` ever committed.
+Branch per task (`b/features`, `b/windows`), small PRs, the other dev reviews before merge, `.githooks/pre-push` runs `ruff format --check` and `ruff check` on every push (a few seconds; turn it on once per clone with `git config core.hooksPath .githooks`); run `pytest -q` yourself before opening a PR. Type hints are welcome but not enforced, nothing under `data/` ever committed.
 
 ### Branches and merges to `main` (identical in both docs)
 
@@ -121,7 +121,7 @@ Each dev works on their own branches and merges small pieces to `main` as soon a
 Rules:
 
 - `main` always runs: the only direct push is M1; every other change goes in through a pull request.
-- The other dev reviews and approves every PR; the author's push passed the pre-push checks (ruff format, ruff check, mypy, pytest).
+- The other dev reviews and approves every PR; the author's push passed the ruff pre-push check and they ran `pytest -q` first.
 - Use squash and merge, then delete the branch.
 - Right after any merge, both devs run `git checkout main` and `git pull`, then `git rebase main` on whatever branch they are on.
 - Merge small and early; a branch should hold one piece, not a day's work.

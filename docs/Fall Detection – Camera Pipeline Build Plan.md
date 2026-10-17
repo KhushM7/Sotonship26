@@ -271,7 +271,7 @@ occlusion:
 
 ### Git habits
 
-Branch per task (`a/labels`, `b/features`), small PRs, the other dev reviews in under 10 minutes, `ruff format`, `ruff check`, `mypy` and `pytest -q` before every push (`.githooks/pre-push` runs all four and blocks the push if one fails; turn it on once per clone with `git config core.hooksPath .githooks`). Every function has type hints: ruff's `ANN` rules and mypy (`disallow_untyped_defs`) enforce it, settings in `pyproject.toml`. Never commit anything under `data/`.
+Branch per task (`a/labels`, `b/features`), small PRs, the other dev reviews in under 10 minutes, `.githooks/pre-push` runs `ruff format --check` and `ruff check` on every push (a few seconds; turn it on once per clone with `git config core.hooksPath .githooks`); run `pytest -q` yourself before opening a PR. Type hints are welcome but not enforced. Never commit anything under `data/`.
 
 ## Datasets: what, where, licence
 
