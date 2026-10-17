@@ -12,6 +12,19 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoProfile -NonInteractive -File \"$CLAUDE_PROJECT_DIR/.claude/hooks/check-python.ps1\"",
+            "timeout": 30,
+            "statusMessage": "ruff on the edited Python file"
+          }
+        ]
+      }
     ]
   }
 }

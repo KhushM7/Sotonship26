@@ -192,7 +192,7 @@ class WindowDataset(torch.utils.data.Dataset):
     ) -> None:
         """`bank` turns on simulated occlusion (train only); `simulate` defaults to
         Dev A's occlusion.simulate_occlusion."""
-        d = windows.load_windows(None, path=npz_path)
+        d = windows.load_windows(Path(npz_path).stem, path=npz_path)
         self.kp, self.wh, self.y = d["kp"], d["wh"], d["y"]
         self.present, self.ctx = d["present"], d["ctx"]  # Contract 3 v2
         self.clip_id, self.end_frame = d["clip_id"], d["end_frame"]

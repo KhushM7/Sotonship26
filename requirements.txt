@@ -12,3 +12,7 @@ typer
 tqdm
 pytest
 ruff
+mypy
+pandas-stubs
+types-PyYAML
+types-tqdm

@@ -10,8 +10,9 @@ import csv
 import os
 import sys
 import time
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import Future, ProcessPoolExecutor, as_completed
 from pathlib import Path
+from typing import Any, cast
 
 import mediapipe as mp
 import numpy as np
@@ -19,7 +20,7 @@ import pandas as pd
 
 from fallsense.config import DATA, load_config, skeleton_path
 from fallsense.io_video import iter_frames
-from fallsense.pose import PoseExtractor
+from fallsense.pose import F32, PoseExtractor
 
 CFG = load_config()
 FPS = CFG["fps"]
@@ -31,9 +32,14 @@ SKIP_FLAGS = {"missing", "unreadable"}
 LOG_FIELDS = ["dataset", "path", "frames", "det_rate", "seconds", "pose_model"]
 
 
-def extract_clip(row: dict, out: str, model: str, upscale: float) -> dict:
+def extract_clip(
+    row: dict[str, Any], out: str, model: str, upscale: float
+) -> dict[str, Any]:
     t0 = time.perf_counter()
-    kps, worlds, dets, ts = [], [], [], []
+    kps: list[F32] = []
+    worlds: list[F32] = []
+    dets: list[bool] = []
+    ts: list[int] = []
     with PoseExtractor(model, upscale=upscale, **POSE) as pose:
         for t_ms, frame in iter_frames(row["file"], FPS):
             kp, w, det = pose(frame, t_ms)
@@ -47,9 +53,9 @@ def extract_clip(row: dict, out: str, model: str, upscale: float) -> dict:
     pose_model = f"{Path(model).stem}@{mp.__version__}" + (
         f"x{upscale:g}" if upscale != 1 else ""
     )
-    out = Path(out)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    tmp = out.with_suffix(".tmp")
+    out_path = Path(out)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = out_path.with_suffix(".tmp")
     with open(tmp, "wb") as f:
         np.savez_compressed(
             f,
@@ -66,7 +72,7 @@ def extract_clip(row: dict, out: str, model: str, upscale: float) -> dict:
             cam=np.int64(row["cam"]),
             pose_model=np.str_(pose_model),
         )
-    os.replace(tmp, out)
+    os.replace(tmp, out_path)
     return {
         "dataset": row["dataset"],
         "path": row["path"],
@@ -116,7 +122,7 @@ def main() -> int:
 
     args.log.parent.mkdir(parents=True, exist_ok=True)
     new_log = not args.log.exists()
-    failures = []
+    failures: list[tuple[str, str, str]] = []
     t0 = time.perf_counter()
     done_s = 0.0
     with (
@@ -126,8 +132,9 @@ def main() -> int:
         log = csv.DictWriter(logf, LOG_FIELDS)
         if new_log:
             log.writeheader()
-        futures = {}
-        for row in inv.to_dict("records"):
+        futures: dict[Future[dict[str, Any]], dict[str, Any]] = {}
+        rows = cast("list[dict[str, Any]]", inv.to_dict("records"))  # str columns
+        for row in rows:
             upscale = 2.0 if (row["dataset"] == "le2i" and LE2I_UPSCALE) else 1.0
             fut = pool.submit(
                 extract_clip, row, row["out"], str(args.pose_model), upscale

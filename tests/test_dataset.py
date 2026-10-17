@@ -147,7 +147,7 @@ def test_window_dataset_items(tmp_path: Path) -> None:
 
 
 def test_window_features_matches_make_features(tmp_path: Path) -> None:
-    d = windows.load_windows(None, path=_toy_npz(tmp_path))
+    d = windows.load_windows("train", path=_toy_npz(tmp_path))
     f = dataset.window_features(d)
     assert f.shape == (8, 30, N_FEATURES)
     np.testing.assert_allclose(

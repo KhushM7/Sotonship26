@@ -1,8 +1,10 @@
 """Contract 3 v2: window arrays, data/windows/{split}.npz, and the windowing rules."""
 
 from pathlib import Path
+from typing import Any, cast
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 from fallsense.config import load_config, windows_path
@@ -29,7 +31,7 @@ _CFG = load_config()
 _L_HIP, _R_HIP = 7, 8
 
 
-def validate_windows(arrays: dict) -> None:
+def validate_windows(arrays: dict[str, npt.NDArray[Any]]) -> None:
     """Raise ValueError unless `arrays` matches Contract 3."""
     missing = set(SCHEMA) - set(arrays)
     if missing:
@@ -47,22 +49,32 @@ def validate_windows(arrays: dict) -> None:
         raise ValueError("ctx must be finite")
 
 
-def save_windows(split, kp, wh, y, clip_id, end_frame, present, ctx, path=None) -> None:
+def save_windows(
+    split: str,
+    kp: npt.ArrayLike,
+    wh: npt.ArrayLike,
+    y: npt.ArrayLike,
+    clip_id: npt.ArrayLike,
+    end_frame: npt.ArrayLike,
+    present: npt.ArrayLike,
+    ctx: npt.ArrayLike,
+    path: Path | None = None,
+) -> None:
     """Cast to the contract dtypes, validate and write data/windows/{split}.npz.
 
     `path` overrides the contract location (dry runs only).
     """
-    arrays = {
+    arrays: dict[str, npt.NDArray[Any]] = {
         key: np.asarray(val, dtype=SCHEMA[key][0])
         for key, val in zip(SCHEMA, (kp, wh, y, clip_id, end_frame, present, ctx))
     }
     validate_windows(arrays)
     path = windows_path(split) if path is None else Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(path, **arrays)
+    np.savez_compressed(path, **cast("dict[str, Any]", arrays))
 
 
-def load_windows(split, path=None) -> dict:
+def load_windows(split: str, path: Path | None = None) -> dict[str, npt.NDArray[Any]]:
     """Load and validate data/windows/{split}.npz (`path` overrides, dry runs only)."""
     with np.load(windows_path(split) if path is None else path) as d:
         arrays = {key: d[key] for key in SCHEMA}

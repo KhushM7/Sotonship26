@@ -33,14 +33,14 @@ def video_path(root: Path, dataset: str, path: str) -> Path:
     return root / dataset / "video" / f"{path}.mp4"
 
 
-def probe(file: Path) -> dict:
+def probe(file: Path) -> dict[str, object]:
     if not file.exists():
         return {"flag": "missing", "reason": "file not found"}
     cap = cv2.VideoCapture(str(file))
     try:
         fps = cap.get(cv2.CAP_PROP_FPS)
         n = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        out = {
+        out: dict[str, object] = {
             "fps": fps,
             "n_frames": n,
             "width": int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
@@ -145,7 +145,8 @@ def summarise(df: pd.DataFrame) -> None:
 def leak_check(df: pd.DataFrame) -> bool:
     ok = True
     known = df[df["subject"] >= 0]
-    for dataset, g in known.groupby("dataset"):
+    for key, g in known.groupby("dataset"):
+        dataset = str(key)
         train = set(g.loc[g["split"] == "train", "subject"])
         test = set(g.loc[g["split"] == "test", "subject"])
         shared = sorted(train & test)
