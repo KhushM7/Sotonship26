@@ -480,8 +480,8 @@ Spec: "Occlusion handling – schema_version 2" in Step 2. Needs M18 (config v2)
 - [x] `qc_pass = det_rate_covered >= 0.6 and (no fall frames or det_rate_fall_covered >= 0.5) and not id_switch`; keep raw `det_rate` and `det_rate_fall` in the index too. Expect OCCU train and val clips to pass now; if one still fails, its reason goes in `DATA_CARD.md`. ✅ *all 10 OCCU clips pass. 6,475 of 6,802 pass: GMDCSA24 155/160, caucafall 86/97, le2i 174/190, mcfd 118/192, occu 10/10, of-syn 5,313/5,335, OOPS 619/818*
 - [x] Apply `qc_pass` to train and val only; keep every test clip (results get reported both with and without failing clips). ✅ *index keeps every clip; `05_build_windows.py` (Dev B) applies qc_pass to train/val only*
 - [x] Write `data\skeletons\index.csv` (Contract 2), `reports\qc\det_rate_by_dataset.png`, `reports\qc\det_rate_by_class.png`. ✅
-- [ ] Render 10 random clips as skeleton-on-black MP4s in `reports\qc\samples\` and watch them; they are the "what the sensor sees" demo footage. ⏳ *10 rendered, one per dataset first (reports/qc/samples, gitignored); watch them*
-- [ ] List every excluded clip and its reason for `DATA_CARD.md`. Merge 04\_qc\_skeletons.py by pull request from branch a/qc (M8) before S7. ⏳ *reports/qc/excluded.csv: 113 train/val clips (mcfd 74, of-syn 18, le2i 11, caucafall 6, GMDCSA24 4); PR from a/qc pending*
+- [x] Render 10 random clips as skeleton-on-black MP4s in `reports\qc\samples\` and watch them; they are the "what the sensor sees" demo footage. ✅ *10 rendered, one per dataset first, over the source video where it is on the laptop (`--black` for skeleton-only, `--clip` for any clip). Watched 17 Oct: multi-person, dog and merged-skeleton problems logged in reports/data_scope_review.md, deferred*
+- [x] List every excluded clip and its reason for `DATA_CARD.md`. Merge 04\_qc\_skeletons.py by pull request from branch a/qc (M8) before S7. ⏳ *reports/qc/excluded.csv: 113 train/val clips (mcfd 74, of-syn 18, le2i 11, caucafall 6, GMDCSA24 4); merged as PR #15 (M8); sample overlay follow-up on a/qc-samples*
 - [ ] Upload `index.csv` and `reports\qc\` to the shared folder.
 - [ ] **SYNC S7 (A → B)** – Dev B downloads the Le2i skeletons and `index.csv`, and reads out index row count and `qc_pass` counts per dataset; you read yours; they match. Tick when confirmed.
 
@@ -496,6 +496,8 @@ Spec: "Occlusion handling – schema_version 2" in Step 2. Needs M18 (config v2)
 - [ ] **SYNC S11 (A → B)** – Dev B downloads them, rebuilds windows, and reads out window counts for OCCU, OF-Syn and OOPS. Tick when confirmed.
 
 Disk: once QC passes, converted videos can be deleted, but keep them until S14 in case re-extraction is needed.
+
+- [ ] **Revisit data scope after the first trained model** (decided 17 Oct: train on everything first). Recompute the metrics in `reports/data_scope_review.md` (QC pass counts, fall agreement, implausible frames, multi-person share, model errors by flag) and fill in its "E8 outcome" with Dev B. ⏳ *deferred*
 
 ## Step 5 – Rule baseline and evaluator
 
