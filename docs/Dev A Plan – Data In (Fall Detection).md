@@ -241,9 +241,9 @@ Three parts, used together:
 
 | Function | Does |
 | --- | --- |
-| `last_seen_context(kp, present, wh, fps, cap_s) -> (T, 4)` | per frame: seconds since the pose was last present (0 while visible, capped at `cap_s`, `cap_s` if never seen); last visible hip height (y / H); last hip vertical speed (frame heights/s over the last 5 present frames, + = down); last hip distance to the nearest border (0–0.5) |
+| `last_seen_context(kp, present, wh, fps, cap_s) -> (T, 4)` | per frame: seconds since the pose was last present (0 while visible, capped at `cap_s`, `cap_s` if never seen); last visible hip height (y / H); last hip vertical speed (**body heights/s** over the last 5 present frames, + = down; body height = the tallest the person stood in the last 2 s, so near and far cameras read the same); last hip distance to the nearest border (0–0.5) |
 | `LastSeenState` | the same four values updated one frame at a time, for `09_live.py` |
-| `find_disappearances(kp, present, wh, fps, cfg) -> DataFrame` | every gap of at least 1 s after at least 5 present frames: start, end, edge distance, descent speed, and `kind` = `left` (lost within `edge_margin` of a border or not descending) or `hidden_down` (lost mid-frame while descending faster than `descent_speed`) |
+| `find_disappearances(kp, present, wh, fps, cfg) -> DataFrame` | every gap of at least 1 s after at least 5 present frames: start, end, edge distance, descent speed, and `kind` = `left` (lost within `edge_margin` of a border or not descending) or `hidden_down` (lost mid-frame while descending faster than `descent_speed`, in body heights/s) |
 | `simulate_occlusion(kp, present, wh, rng, onset, mode, cfg) -> (kp, present)` | hides the person from frame `onset` on. `rise`: an occluder edge at a fixed image height; keypoints below it are lost, and the whole frame is lost once fewer than `min_visible_kp` remain, so ankles vanish first and the head last, as when sinking behind a bed. `box`: a fixed rectangle over 20–50% of the person's box (partial occlusion). Both add 3–8 frames of flicker at the boundary before the loss is complete. |
 
 **Contract 2 v2 (index), Dev A.** Adds `hidden_frac_fall` (share of falling/fallen frames inside a `hidden_down` gap) and `n_hidden_gaps`. A frame counts as *covered* if the pose is detected or the frame lies inside a `hidden_down` gap; QC becomes `qc_pass = det_rate_covered >= 0.6 and (no fall frames or det_rate_fall_covered >= 0.5) and not id_switch`, with `det_rate` and `det_rate_fall` still reported raw. OCCU train and val clips then pass on their merits instead of being dropped.
@@ -265,7 +265,7 @@ The window drop rule changes from "over 40% of frames have no pose" to "over 40%
 
 **Training-time simulation (Dev B calls Dev A's function).** In `dataset.py`, a `ClipBank` keeps every train clip's 13-keypoint pixel array and `present` in memory (about 50 MB for all train sets). With augmentation on, a window is occluded with probability `aug_p_fall` if a falling or fallen frame lies within `lookback_frames` before its end, otherwise with `aug_p_other`. To occlude: take the clip's last `lookback_frames` frames up to the window end, pick an onset inside them (for falls, between the fall start and the window end), call `simulate_occlusion`, recompute `last_seen_context` on that span, and keep the last 30 frames. The label does not change: a simulated hidden fall is still `fallen`, a person occluded while walking is still `upright`. Occluding normal activity matters as much as occluding falls; without it the model would learn "vanished means fallen". Val, test, staged_test and OOPS are never occluded artificially; OCCU test and the staged hidden-fall clips are the real-occlusion check.
 
-**Realism check (Dev A).** `reports/occlusion_realism.md` compares simulated disappearances on Le2i and OF-Syn falls with real OCCU ones on edge distance, descent speed, gap length and keypoint loss order; adjust the simulation parameters until they match before Dev B trains E7.
+**Realism check (Dev A).** `reports/occlusion_realism.md` compares simulated disappearances on Le2i and OF-Syn falls with real OCCU ones on edge distance, descent speed, gap length and keypoint loss order; adjust the simulation parameters until they match before Dev B trains E7. **Status (17 Oct): accepted as it is.** Edge distance, loss order and the false `hidden_down` rate match real OCCU; simulated falls vanish at a lower hip speed than real ones (31% classified `hidden_down` vs 94% for OCCU). E7 decides whether it helps; the report lists what to revisit if it does not.
 
 **Config additions (`configs/default.yaml`, Dev B):**
 
@@ -274,7 +274,7 @@ schema_version: 2
 occlusion:
   ctx_cap_s: 20          # cap on seconds-since-seen (matches on_floor_seconds)
   edge_margin: 0.10      # lost within this of a border -> "left"
-  descent_speed: 0.15    # hips dropping faster than this (frame heights/s) when lost -> "hidden_down"
+  descent_speed: 0.30    # hips dropping faster than this (body heights/s) when lost -> "hidden_down"
   hidden_check_s: 3.0    # tracker: hidden_down for this long -> CHECK; tuned on val
   min_visible_kp: 4      # simulation: fewer visible keypoints -> whole frame lost
   lookback_frames: 330   # simulation: clip history used (window + ctx_cap_s at 15 fps)
@@ -282,9 +282,9 @@ occlusion:
   aug_p_other: 0.15      # simulation: probability for all other windows
 ```
 
-`edge_margin` and `descent_speed` start from the OCCU/Le2i measurement above; `hidden_check_s` is tuned on val only.
+`edge_margin` starts from the OCCU/Le2i measurement above. `descent_speed` is in **body heights/s** (changed from frame heights/s on 17 Oct: in frame units the same fall reads 3× faster on a close camera than a far one, 0.15 on MCFD vs 0.47 on GMDCSA24, while in body units falls read 0.67–0.99 everywhere); 0.30 was picked on train clips: it catches 94% of real OCCU hidden falls with 24 false `hidden_down` gaps outside falls, 22 of them on MCFD's poor-detection cameras (`reports/occlusion_realism.md`). `hidden_check_s` is tuned on val only.
 
-**Evaluation (Dev A).** `08_evaluate.py` adds rows for model + tracker and baseline + tracker, and reports OCCU test and the staged hidden-fall clips separately with and without each part. Experiment **E7** (best config + simulated occlusion vs the same config without it) answers "does simulated occlusion help?".
+**Evaluation (Dev A).** `08_evaluate.py` adds rows for model + tracker and baseline + tracker, and reports OCCU test and the staged hidden-fall clips separately with and without each part. Experiment **E7** (best config + simulated occlusion vs the same config without it) answers "does simulated occlusion help?". **When E7 runs, Dev B writes its val results (with and without simulated occlusion: all of val, OCCU val, false alerts per hour elsewhere), the run names and the keep/drop decision into the "E7 outcome" section of `reports/occlusion_realism.md` and into `reports/experiments.csv`**, so the simulation can be revisited later.
 
 **Merges and syncs added** (numbered after M17 and S15 so nothing else is renumbered):
 
@@ -446,18 +446,18 @@ def segments_for(dataset: str, path: str) -> pd.DataFrame:
 - [x] `tests/test_labels.py`: 0.0–1.0 s at 15 fps labels frames 0–14; later segment wins on overlap; gaps give -1; `to4` maps 0–15 and keeps -1; negative start and over-long end are clipped, not dropped. ✅ *7 tests pass (plan's 5 + dropped-segment and overlap counting); full suite 16 passed*
 - [x] Sanity pass: play 3 fall clips per dataset with `cv2.imshow` and the 4-class label drawn in the corner. If the label lags the motion by more than about 0.3 s, fix the resampling before extracting. ✅ *all 130 le2i and 84 occu falls checked: fastest hip drop inside the fall label (+-0.3 s) for 98% / 96%, none where the label ends too early; 3+3 contact sheets look right; no resampling fix needed*
 - [ ] Merge `by pull request from branch a/labels (M5) once the tests pass and Dev B has reviewed; main is green before S5`.
-- [ ] **SYNC S5 (A → B)** – Dev B pulls, runs `pytest tests/test_labels.py`, and you both look at the frame labels of one fall clip. Tick when Dev B confirms.
+- [x] **SYNC S5 (A → B)** – Dev B pulls, runs `pytest tests/test_labels.py`, and you both look at the frame labels of one fall clip. Tick when Dev B confirms. ✅ *done together with Dev B; tests pass and frame labels line up on a fall clip*
 
 ### 4a2. `src/fallsense/occlusion.py` (occlusion handling parts 1 and 3)
 
 Spec: "Occlusion handling – schema_version 2" in Step 2. Needs M18 (config v2) on main.
 
-- [ ] `last_seen_context(kp, present, wh, fps, cap_s) -> (T, 4)` and the incremental `LastSeenState` (same numbers one frame at a time, for `09_live.py`).
-- [ ] `find_disappearances(kp, present, wh, fps, cfg) -> DataFrame` with `kind` = `left` / `hidden_down`, using `edge_margin` and `descent_speed`.
-- [ ] `simulate_occlusion(kp, present, wh, rng, onset, mode, cfg)` with `rise` and `box` modes and 3–8 frames of boundary flicker.
-- [ ] `tests/test_occlusion.py`: context is 0 while visible, grows by 1/15 s per hidden frame and stops at `cap_s`; `LastSeenState` matches `last_seen_context` frame for frame; a synthetic walk off the right edge is `left` and a synthetic mid-frame drop is `hidden_down`; `rise` hides ankles before the head and never un-hides a keypoint; the same seed gives the same output.
-- [ ] Realism check: run `find_disappearances` on real OCCU and on Le2i/OF-Syn falls passed through `simulate_occlusion`; write `reports/occlusion_realism.md` comparing edge distance, descent speed, gap length and keypoint loss order. Adjust the simulation parameters until the distributions overlap.
-- [ ] Check `edge_margin` and `descent_speed` on all extracted train clips: report how many `left` and `hidden_down` gaps each dataset has and how many `hidden_down` gaps fall outside labelled falls (these are the tracker's future false CHECKs).
+- [x] `last_seen_context(kp, present, wh, fps, cap_s) -> (T, 4)` and the incremental `LastSeenState` (same numbers one frame at a time, for `09_live.py`). ✅ *LastSeenState is the single implementation; last_seen_context loops it, so offline and live match exactly*
+- [x] `find_disappearances(kp, present, wh, fps, cfg) -> DataFrame` with `kind` = `left` / `hidden_down`, using `edge_margin` and `descent_speed`. ✅ *gaps >= 1 s after 5 present frames; kind from edge_margin 0.10 and descent_speed 0.15*
+- [x] `simulate_occlusion(kp, present, wh, rng, onset, mode, cfg)` with `rise` and `box` modes and 3–8 frames of boundary flicker. ✅ *hidden keypoints become low-visibility guesses near the occluder (what MediaPipe did behind the OCCU bed), frame lost below min_visible_kp; flicker 3-8 frames*
+- [x] `tests/test_occlusion.py`: context is 0 while visible, grows by 1/15 s per hidden frame and stops at `cap_s`; `LastSeenState` matches `last_seen_context` frame for frame; a synthetic walk off the right edge is `left` and a synthetic mid-frame drop is `hidden_down`; `rise` hides ankles before the head and never un-hides a keypoint; the same seed gives the same output. ✅ *11 tests pass (plan's 5 plus never-seen cap, short gaps ignored, onset untouched, guesses not NaN, unknown mode)*
+- [x] Realism check: run `find_disappearances` on real OCCU and on Le2i/OF-Syn falls passed through `simulate_occlusion`; write `reports/occlusion_realism.md` comparing edge distance, descent speed, gap length and keypoint loss order. Adjust the simulation parameters until the distributions overlap. ✅ *scripts/occlusion_realism.py writes reports/occlusion_realism.md; edge distance, loss order and false-hidden_down rate match OCCU; speed at loss lower (31% vs 94% hidden_down). Accepted as is on 17 Oct; E7 decides, revisit notes in the report*
+- [x] Check `edge_margin` and `descent_speed` on all extracted train clips: report how many `left` and `hidden_down` gaps each dataset has and how many `hidden_down` gaps fall outside labelled falls (these are the tracker's future false CHECKs). ✅ *switched to body heights/s; descent_speed 0.30 picked on train: 94% of OCCU hidden falls caught, 24 false hidden_down outside falls (22 MCFD, 1 le2i, 1 occu); table in the report*
 - [ ] Merge by pull request from branch `a/occlusion` (M19); Dev B reviews.
 - [ ] **SYNC S16 (A → B)** – Dev B pulls, runs `pytest tests/test_occlusion.py`, reads the realism report and confirms the `ClipBank` hook in `dataset.py` can call `simulate_occlusion`. Tick when Dev B confirms.
 
@@ -468,8 +468,8 @@ Spec: "Occlusion handling – schema_version 2" in Step 2. Needs M18 (config v2)
 
 ### 4c. Collect Dev B's skeletons
 
-- [ ] Shared team folder (OneDrive or Google Drive): `fallsense-data/skeletons/`. Zip each dataset folder from `data\skeletons\` and upload yours too.
-- [ ] **SYNC S6 (B → A)** – Dev B says GMDCSA24, CAUCAFall and MCFD are uploaded with their `extract_log.csv`. You unzip into `data\skeletons\` and check the .npz count per dataset matches their log (GMDCSA24 160, CAUCAFall 100, MCFD per their log). Tick when the counts match out loud.
+- [ ] Shared team folder (OneDrive or Google Drive): `fallsense-data/skeletons/`. Zip each dataset folder from `data\skeletons\` and upload yours too. ⏳ *Google Drive folder set up by Dev B; zips checked (only .npz, no unsafe paths) and unzipped. Uploading my zips waits for QC (4d)*
+- [x] **SYNC S6 (B → A)** – Dev B says GMDCSA24, CAUCAFall and MCFD are uploaded with their `extract_log.csv`. You unzip into `data\skeletons\` and check the .npz count per dataset matches their log (GMDCSA24 160, CAUCAFall 100, MCFD per their log). Tick when the counts match out loud. ✅ *unzipped into data\skeletons; GMDCSA24 160, caucafall 97 (only 97 labelled), mcfd 192 - every file matches Dev B's extract_log, none missing or extra*
 
 ### 4d. `scripts/04_qc_skeletons.py`
 
@@ -488,9 +488,9 @@ Spec: "Occlusion handling – schema_version 2" in Step 2. Needs M18 (config v2)
 ### 4e. OF-Syn subset and OOPS (runs while Dev B trains)
 
 - [x] Subset: `omnifall.load("metadata-syn")`, unique paths; age groups are 0 toddler, 1 child, 2 teen, 3 young adult, 4 middle-aged, 5 elderly (2,000 each). Keep **all 2,000 elderly clips** and sample a third of every other group (`groupby("age_group").sample(frac=1/3, random_state=1337)`), 5,335 clips in total, so the elderly subgroup gets 202 test clips instead of 54. Save `data\of_syn_subset.csv` and commit a copy to `configs/` on branch a/extras and merge by pull request (M12) before S11. ✅ *merged as PR #9 (M12): 5,335 clips, all 2,000 elderly, train 4,274 / val 522 / test 539*
-- [ ] `python scripts\02_inventory.py --datasets of-syn OOPS` ⏳ *running since 14:19; OF-Syn probing is slow (seeking to the last AV1 frame decodes the whole clip, ~3.5 s per clip under load), about 100 min for all 12,000 clips*
-- [ ] `python scripts\03_extract_skeletons.py --datasets of-syn --clip-list data\of_syn_subset.csv` (estimate 45–95 min for 5,335 clips; extra 1,333 elderly clips add about 12–25 min). ⏳ *queued after the inventory, on the 4,002-clip list; the 1,333 extra elderly clips need one more run with the 5,335-clip list (resumes, skips done clips)*
-- [ ] `python scripts\03_extract_skeletons.py --datasets OOPS` (estimate 15–30 min). ⏳ *queued after OF-Syn*
+- [x] `python scripts\02_inventory.py --datasets of-syn OOPS` ✅ *13,018 inventory rows; of-syn 12,000 and OOPS 818, nothing flagged; took 55 min (AV1 seek to last frame is slow)*
+- [x] `python scripts\03_extract_skeletons.py --datasets of-syn --clip-list data\of_syn_subset.csv` (estimate 45–95 min for 5,335 clips; extra 1,333 elderly clips add about 12–25 min). ✅ *5,335 clips (elderly-weighted list), 0 failed, 405,460 frames, mean detection 0.99, 75 min on 14 workers*
+- [x] `python scripts\03_extract_skeletons.py --datasets OOPS` (estimate 15–30 min). ✅ *818 clips, 0 failed, 142,981 frames, mean detection 0.74 (real home videos), 15 min*
 - [ ] If this runs long, copy half of the subset's OF-Syn videos (about 1.5 GiB) to Dev B with a second clip list; Dev B has room under 30 GB.
 - [ ] Rerun `04_qc_skeletons.py`; upload the new zips, `index.csv` and QC plots.
 - [ ] **SYNC S11 (A → B)** – Dev B downloads them, rebuilds windows, and reads out window counts for OCCU, OF-Syn and OOPS. Tick when confirmed.
