@@ -709,7 +709,7 @@ Procedure:
 3. 95% intervals by bootstrap over **clips** (1,000 resamples, clips drawn with replacement), never over windows, because windows from one clip are not independent.
 4. Break results down by dataset, by `qc_pass`, and for OF-Syn by `age_group` and `bmi_band`; for the staged set by lighting and occlusion tags. Add rows for model + tracker and baseline + tracker (tracker alerts from Contract 5, CHECK level), and report OCCU test and the staged hidden-fall clips on their own, with and without the tracker and with and without simulated occlusion (E7).
 5. Plot the **coverage–error curve**: sweep the CHECK band width from 0 to its maximum and plot missed falls + false FALLs per hour against coverage. This is the brief's error-versus-coverage trade-off in one picture.
-6. Write `reports/eval_<run>_<split>.json` and a one-page `reports/eval_<run>_<split>.md` with every number next to its sample size (events, clips, hours).
+6. Write `reports/eval/eval_<run>_<split>.json` and a one-page `reports/eval/eval_<run>_<split>.md` with every number next to its sample size (events, clips, hours).
 
 `tests/test_metrics.py`: a perfect detector scores sensitivity 1 and zero false alerts; an alert 11 s after a fall ends counts as false; two alerts inside one refractory window count once; bootstrap intervals contain the point estimate.
 

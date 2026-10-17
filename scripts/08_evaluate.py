@@ -9,7 +9,7 @@ labels and the run's thresholds.yaml (models/<model>/ or reports/scores/<model>/
 --t-high/--t-low override). Rows: the run with one threshold, the run with the
 CHECK band, the rule baseline (if its scores exist for the split), and each of
 those + tracker once reports/alerts/tracker/<split>.parquet (Contract 5) exists.
-Writes reports/eval_<model>_<split>.json, .md and _coverage.png.
+Writes reports/eval/eval_<model>_<split>.json, .md and _coverage.png (--out-dir).
 """
 
 import argparse
@@ -266,6 +266,7 @@ def main() -> None:
     ap.add_argument("--t-high", type=float)
     ap.add_argument("--t-low", type=float)
     ap.add_argument("--boot", type=int, default=metrics.N_BOOT)
+    ap.add_argument("--out-dir", type=Path, default=REPORTS / "eval")
     args = ap.parse_args()
 
     index = pd.read_csv(args.index)
@@ -320,24 +321,25 @@ def main() -> None:
     report["windows"] = window_report(sc, args.split, args.windows)
 
     stem = f"eval_{args.model}_{args.split}"
+    out = args.out_dir
+    out.mkdir(parents=True, exist_ok=True)
     if th["t_high"] > 0:
         report["curve"] = coverage_curve(sc, th, clips, events)
-        report["curve_png"] = str(REPORTS / f"{stem}_coverage.png")
+        report["curve_png"] = f"{stem}_coverage.png"  # next to the .md
         plot_curve(
-            report["curve"], f"{args.model} on {args.split}", Path(report["curve_png"])
+            report["curve"], f"{args.model} on {args.split}", out / report["curve_png"]
         )
-    REPORTS.mkdir(exist_ok=True)
-    (REPORTS / f"{stem}.json").write_text(
+    (out / f"{stem}.json").write_text(
         json.dumps(report, indent=2, default=float), encoding="utf-8"
     )
-    write_markdown(report, REPORTS / f"{stem}.md")
+    write_markdown(report, out / f"{stem}.md")
     for name, res in report["systems"].items():
         print(
             f"{name:34s} sens FALL {fmt(res, 'sensitivity_alarm', 'pct'):22s} "
             f"any {fmt(res, 'sensitivity_any', 'pct'):22s} "
             f"false/h {fmt(res, 'false_alarms_per_h', 'num')}"
         )
-    print(f"wrote {REPORTS / stem}.md / .json")
+    print(f"wrote {out / stem}.md / .json")
 
 
 if __name__ == "__main__":

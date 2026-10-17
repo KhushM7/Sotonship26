@@ -115,7 +115,7 @@ A run folder is a few MB: `model.pt`, `feat_stats.npz`, `config.yaml`, `train_lo
 ## 7. Evaluation loop (Dev A)
 
 1. E0 baseline scores on train/val (Dev A, no training).
-2. For each finished run: `08_evaluate.py --model <run> --split val` → `reports/eval_<run>_val.md/json` (bootstrap intervals over clips).
+2. For each finished run: `08_evaluate.py --model <run> --split val` → `reports/eval/eval_<run>_val.md/json` (bootstrap intervals over clips).
 3. Dev B picks the winner of each wave from those reports, which decides the next wave.
 4. Final model: `07_calibrate.py` (Dev B) → `thresholds.yaml` → scores on test, staged_test and OOPS → `08_evaluate.py` once per split.
 5. S10: both laptops run `08_evaluate.py` on the same run and split; the numbers must match exactly (a check that the code, not the machine, decides the result).
