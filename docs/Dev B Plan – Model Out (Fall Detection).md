@@ -35,16 +35,16 @@ Compute times in this doc are estimates; replace them with measured numbers as y
 
 Your laptop holds GMDCSA24, CAUCAFall and MCFD in `C:\fall-data\cache\videos\<dataset>\video\` (30 GB cap).
 
-- [ ] In a new PowerShell window:
+- [x] In a new PowerShell window: ✅
   - `$env:OMNIFALL_CACHE_DIR = "C:\fall-data\cache"`
   - `$env:OMNIFALL_DOWNLOAD_DIR = "C:\fall-data\downloads"`
   - `Remove-Item Env:OMNIFALL_ROOT -ErrorAction SilentlyContinue`
-- [ ] `omnifall verify GMDCSA24`, `omnifall verify caucafall`, `omnifall verify mcfd` – each reports no missing files.
-- [ ] Video counts: `(Get-ChildItem C:\fall-data\cache\videos\<dataset>\video -Recurse -Filter *.mp4).Count` – expect GMDCSA24 160, CAUCAFall 100; note MCFD's count.
-- [ ] Free space: `Remove-Item C:\fall-data\downloads\* -Recurse -Force` and delete `C:\Users\anant\Downloads\Dataset CAUCAFall.zip` if still there. Check usage: `"{0:N1} GB" -f ((Get-ChildItem C:\fall-data -Recurse -File | Measure-Object Length -Sum).Sum / 1GB)` is well under 30.
-- [ ] Any failure: rerun `omnifall prepare <dataset> --workers 4` (CAUCAFall needs `--archive` with the Mendeley zip).
-- [ ] Note each dataset's licence (`omnifall sources <dataset>`) and BibTeX (`omnifall cite <dataset>`) and send them to Dev A for `DATA_CARD.md`.
-- [ ] **SYNC S0 (both)** – read your three verify results out loud; Dev A reads theirs (Le2i, OCCU, OF-Syn, OOPS). Both tick only when all seven datasets verify.
+- [x] `omnifall verify GMDCSA24`, `omnifall verify caucafall`, `omnifall verify mcfd` – each reports no missing files. ✅ *all three verify*
+- [x] Video counts: `(Get-ChildItem C:\fall-data\cache\videos\<dataset>\video -Recurse -Filter *.mp4).Count` – expect GMDCSA24 160, CAUCAFall 100; note MCFD's count. ✅ *GMDCSA24 160, caucafall 100, mcfd 192*
+- [ ] Free space: `Remove-Item C:\fall-data\downloads\* -Recurse -Force` and delete `C:\Users\anant\Downloads\Dataset CAUCAFall.zip` if still there. Check usage: `"{0:N1} GB" -f ((Get-ChildItem C:\fall-data -Recurse -File | Measure-Object Length -Sum).Sum / 1GB)` is well under 30. ⏳ *C:/fall-data/downloads/caucafall still there; delete when you are happy*
+- [x] Any failure: rerun `omnifall prepare <dataset> --workers 4` (CAUCAFall needs `--archive` with the Mendeley zip). ✅ *no failures*
+- [x] Note each dataset's licence (`omnifall sources <dataset>`) and BibTeX (`omnifall cite <dataset>`) and send them to Dev A for `DATA_CARD.md`. ✅ *sent to Dev A (data/licences_and_bibtex_devB.txt): GMDCSA24 MIT, CAUCAFall CC BY 4.0, MCFD see homepage*
+- [x] **SYNC S0 (both)** – read your three verify results out loud; Dev A reads theirs (Le2i, OCCU, OF-Syn, OOPS). Both tick only when all seven datasets verify. ✅ *all seven datasets verify (Dev A confirmed)*
 
 ## Step 1 – Clone the repo, environment, config and env check
 
@@ -52,23 +52,23 @@ Dev A creates the repo and lockfile; you add the config and the environment chec
 
 ### 1a. Clone
 
-- [ ] **SYNC S1 (A → B)** – Dev A gives you the repo URL and adds you as collaborator. Run `git clone <repo-url> C:\code\fallsense`, create branch `b/hello`, push it, and tell Dev A. Tick when Dev A sees it on GitHub.
+- [x] **SYNC S1 (A → B)** – Dev A gives you the repo URL and adds you as collaborator. Run `git clone <repo-url> C:\code\fallsense`, create branch `b/hello`, push it, and tell Dev A. Tick when Dev A sees it on GitHub. ✅ *pushed test_branch; Dev A confirmed*
 
 ### 1b. Environment (after Dev A pushes `requirements.lock`)
 
-- [ ] From `C:\code\fallsense`:
+- [x] From `C:\code\fallsense`: ✅ *working in the Sotonship26 folder; .venv on Python 3.11.4*
   - `uv venv --python 3.11 .venv`
   - `.venv\Scripts\activate`
   - `uv pip sync requirements.lock --extra-index-url https://download.pytorch.org/whl/cpu`
   - `uv pip install -e .`
-- [ ] Copy `.env.ps1.example` to `.env.ps1`.
-- [ ] Link data into the repo: `New-Item -ItemType Junction -Path data -Target C:\fall-data`.
-- [ ] Save environment variables once, then close and reopen all terminals:
+- [x] Copy `.env.ps1.example` to `.env.ps1`. ✅
+- [x] Link data into the repo: `New-Item -ItemType Junction -Path data -Target C:\fall-data`. ✅
+- [x] Save environment variables once, then close and reopen all terminals: ✅
   - `setx FALL_DATA "C:\fall-data"`
   - `setx OMNIFALL_CACHE_DIR "C:\fall-data\cache"`
   - `setx OMNIFALL_DOWNLOAD_DIR "C:\fall-data\downloads"`
   - `setx OMNIFALL_ROOT "C:\fall-data\cache\videos"`
-- [ ] Pose models (use `curl.exe`):
+- [x] Pose models (use `curl.exe`): ✅ *full and lite both in models/pose*
   - `curl.exe -L -o models\pose\pose_landmarker_full.task https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/latest/pose_landmarker_full.task`
   - same again with `full` replaced by `lite` in both places.
 
@@ -93,22 +93,22 @@ seed: 1337
 on_floor_seconds: 20
 ```
 
-- [ ] `config.py`: `load_config(path="configs/default.yaml") -> dict`, plus `DATA = Path(os.environ["FALL_DATA"])` and helpers `skeleton_path(dataset, path)` and `windows_path(split)` that follow the contracts.
+- [x] `config.py`: `load_config(path="configs/default.yaml") -> dict`, plus `DATA = Path(os.environ["FALL_DATA"])` and helpers `skeleton_path(dataset, path)` and `windows_path(split)` that follow the contracts. ✅ *also scores_path for Contract 4*
 
 ### 1d. `scripts/00_check_env.py`
 
 Checks in order, printing OK or FAIL per line:
 
-- [ ] Python is 3.11.
-- [ ] `import mediapipe, cv2, torch, omnifall, fallsense` succeed; print mediapipe and torch versions.
-- [ ] `shutil.which("ffmpeg")` is not None.
-- [ ] `FALL_DATA`, `OMNIFALL_CACHE_DIR`, `OMNIFALL_DOWNLOAD_DIR`, `OMNIFALL_ROOT` are set and `OMNIFALL_ROOT` exists.
-- [ ] At least 10 GB free on the drive (`shutil.disk_usage`).
-- [ ] Both .task files load in a `PoseLandmarker`.
-- [ ] One webcam frame from `cv2.VideoCapture(0)` returns a pose with a person in view.
-- [ ] Print `torch.get_num_threads()`.
-- [ ] Set up `pytest` (a `tests/conftest.py` that adds `src` to the path if needed) and merge 1c–1d by pull request from branch b/config-env (M3); Dev A reviews, and you both confirm main is green before S2.
-- [ ] **SYNC S2 (A ↔ B)** – both run `python scripts\00_check_env.py`; every line OK on both laptops; mediapipe and torch versions match. Tick only when both pass.
+- [x] Python is 3.11. ✅
+- [x] `import mediapipe, cv2, torch, omnifall, fallsense` succeed; print mediapipe and torch versions. ✅
+- [x] `shutil.which("ffmpeg")` is not None. ✅
+- [x] `FALL_DATA`, `OMNIFALL_CACHE_DIR`, `OMNIFALL_DOWNLOAD_DIR`, `OMNIFALL_ROOT` are set and `OMNIFALL_ROOT` exists. ✅
+- [x] At least 10 GB free on the drive (`shutil.disk_usage`). ✅
+- [x] Both .task files load in a `PoseLandmarker`. ✅
+- [x] One webcam frame from `cv2.VideoCapture(0)` returns a pose with a person in view. ✅
+- [x] Print `torch.get_num_threads()`. ✅
+- [x] Set up `pytest` (a `tests/conftest.py` that adds `src` to the path if needed) and merge 1c–1d by pull request from branch b/config-env (M3); Dev A reviews, and you both confirm main is green before S2. ✅ *merged as PR #1 (M3)*
+- [x] **SYNC S2 (A ↔ B)** – both run `python scripts\00_check_env.py`; every line OK on both laptops; mediapipe and torch versions match. Tick only when both pass. ✅ *all OK on both laptops; mediapipe 1.1.1, torch 2.14.1+cpu*
 
 ### Git habits (both)
 
@@ -281,31 +281,31 @@ occlusion:
 **Extra time (rough; replace with measured).** Dev A 5–7 h: `occlusion.py` and tests 2–3 h, realism check 1 h, tracker and tests 2–3 h, QC and evaluation changes about 1 h. Dev B 3–4 h: contract v2 about 1 h, features and windows 1.5–2 h, `ClipBank` and the augmentation hook 1–1.5 h, live hook 0.5 h. Training takes about 20–50% longer per run because the occluded examples are harder; on CPU that is minutes.
 
 - [x] **SYNC S3 (both)** – read this section together, including the occlusion handling above; both say "agreed" to `schema_version: 2` before writing any more code. Dev B then merges the contract v2 changes (M18).
-- [ ] **M18 (you)** – on branch `b/contract-v2`: bump `configs/default.yaml` to `schema_version: 2` and add the `occlusion` block; add `present` bool (N, 30) and `ctx` float32 (N, 30, 4) to `SCHEMA` in `windows.py` and to `save_windows`; extend `tests/test_windows.py` for the two keys. Pull request; Dev A reviews.
+- [x] **M18 (you)** – on branch `b/contract-v2`: bump `configs/default.yaml` to `schema_version: 2` and add the `occlusion` block; add `present` bool (N, 30) and `ctx` float32 (N, 30, 4) to `SCHEMA` in `windows.py` and to `save_windows`; extend `tests/test_windows.py` for the two keys. Pull request; Dev A reviews. ✅ *merged as PR #7*
 
 ## Step 3 – Extract and share your three datasets
 
 You run Dev A's scripts on your own videos (GMDCSA24, CAUCAFall, MCFD). `features.py` (Step 4) depends only on the contracts, so start it while you wait for S4 and while extraction runs.
 
-- [ ] **SYNC S4 (A → B)** – Dev A says `io_video.py`, `pose.py`, `02_inventory.py` and `03_extract_skeletons.py` are merged and names the pose model (full or lite). Pull, then:
+- [x] **SYNC S4 (A → B)** – Dev A says `io_video.py`, `pose.py`, `02_inventory.py` and `03_extract_skeletons.py` are merged and names the pose model (full or lite). Pull, then: ✅ *inventory 449 clips (GMDCSA24 160, caucafall 97 labelled, mcfd 192), none missing/unreadable; smoke kp (T,33,4), detection 0.85-1.0*
   - `python scripts\02_inventory.py --datasets GMDCSA24 caucafall mcfd` – read out clips and hours per dataset; no `missing` or `unreadable` flags.
   - `python scripts\03_extract_skeletons.py --datasets GMDCSA24 --limit 5` – open one .npz; `kp` is (T, 33, 4), `detected.mean()` above 0.8 on a walking clip.
   - Read the shapes and detection rate out loud. Tick when Dev A agrees.
-- [ ] Full run: `python scripts\03_extract_skeletons.py --datasets GMDCSA24 caucafall mcfd` (estimate: about 120,000 frames, 15–25 min; MCFD is most of it). Keep the laptop on mains power; the script resumes if interrupted.
-- [ ] If the ETA printed after 10 clips is over 2 hours, stop, drop MCFD to 4 of its 8 cameras with an edited inventory, and tell Dev A which cameras.
-- [ ] Zip each dataset folder from `data\skeletons\` and upload to the shared folder `fallsense-data/skeletons/`, together with `reports\extract_log.csv`.
-- [ ] **SYNC S6 (B → A)** – tell Dev A the three zips and the log are uploaded. Dev A unzips and reads out .npz counts per dataset; they match your log (GMDCSA24 160, CAUCAFall 100, MCFD as logged). Tick when the counts match out loud.
+- [x] Full run: `python scripts\03_extract_skeletons.py --datasets GMDCSA24 caucafall mcfd` (estimate: about 120,000 frames, 15–25 min; MCFD is most of it). Keep the laptop on mains power; the script resumes if interrupted. ✅ *444 ok, 0 failed, 17.9 min*
+- [x] If the ETA printed after 10 clips is over 2 hours, stop, drop MCFD to 4 of its 8 cameras with an edited inventory, and tell Dev A which cameras. ✅ *not needed (ETA well under 2 h)*
+- [x] Zip each dataset folder from `data\skeletons\` and upload to the shared folder `fallsense-data/skeletons/`, together with `reports\extract_log.csv`. ✅ *GMDCSA24.zip, caucafall.zip, mcfd.zip and extract_log.csv in the shared folder*
+- [x] **SYNC S6 (B → A)** – tell Dev A the three zips and the log are uploaded. Dev A unzips and reads out .npz counts per dataset; they match your log (GMDCSA24 160, CAUCAFall 100, MCFD as logged). Tick when the counts match out loud. ✅ *Dev A's counts match the log: GMDCSA24 160, caucafall 97, mcfd 192*
 - [ ] Disk: keep the converted videos until S14 in case re-extraction is needed; you are well inside 30 GB.
 
 ## Step 4 – `features.py`
 
 One function, `make_features(kp, wh, present, ctx) -> (T, 51) float32`, used by training, evaluation, Dev A's rule baseline and the live demo, so there is no train/serve mismatch. Input `kp` is (T, 13, 3): pixel x, pixel y, visibility for the 13 config keypoints (multiply normalised x by width and y by height first). `wh` is (width, height). `present` is (T,) bool and `ctx` is (T, 4) from Dev A's `occlusion.last_seen_context` (Contract 3 v2); until M19 lands, test with `ctx` computed by a stub that returns zeros while present.
 
-- [ ] **Gap fill:** per keypoint, forward-fill NaN gaps of up to 5 frames (0.33 s); anything still missing becomes 0 with visibility 0.
-- [ ] **Scale:** torso length L = distance from shoulder midpoint (keypoints 11, 12) to hip midpoint (23, 24), median over frames where all four have visibility above 0.5; fallback 0.25 × height; floor 0.05 × height.
-- [ ] **Pose shape (26):** each keypoint's (x, y) minus that frame's hip midpoint, divided by L.
-- [ ] **Visibility (13):** raw visibility per keypoint.
-- [ ] **Derived (8), per frame:**
+- [x] **Gap fill:** per keypoint, forward-fill NaN gaps of up to 5 frames (0.33 s); anything still missing becomes 0 with visibility 0. ✅
+- [x] **Scale:** torso length L = distance from shoulder midpoint (keypoints 11, 12) to hip midpoint (23, 24), median over frames where all four have visibility above 0.5; fallback 0.25 × height; floor 0.05 × height. ✅
+- [x] **Pose shape (26):** each keypoint's (x, y) minus that frame's hip midpoint, divided by L. ✅
+- [x] **Visibility (13):** raw visibility per keypoint. ✅
+- [x] **Derived (8), per frame:** ✅
   - torso angle from vertical: angle of (shoulder mid − hip mid) against image up, divided by π (0 upright, 0.5 horizontal)
   - hip height = (ankle mid y − hip mid y) / L (about 2 standing, near 0 lying)
   - head height = (hip mid y − nose y) / L
@@ -314,12 +314,12 @@ One function, `make_features(kp, wh, present, ctx) -> (T, 51) float32`, used by 
   - log bounding-box aspect = log(width / height) of visible keypoints (Dev A's baseline uses this and hip height)
   - mean visibility
   - detected flag (0/1)
-- [ ] **Disappearance context (4):** `ctx` columns as they are, except seconds-since-seen divided by `occlusion.ctx_cap_s` (0–1). The "detected flag" above comes from `present`.
-- [ ] Clip every feature to \[−10, 10\]; assert no NaN leaves the function.
-- [ ] Expose the feature names as `FEATURE_NAMES` (51 strings) so the baseline can index `log_bbox_aspect` and `hip_height` by name.
-- [ ] `tests/test_features.py`: output (30, 51); a window whose last 10 frames are not present still returns finite values and carries the `ctx` values through; doubling all coordinates leaves shape features unchanged; a mirrored skeleton gives the same torso angle and hip height; 40% NaN frames still returns finite values; a synthetic standing-then-lying sequence moves torso angle from about 0 to about 0.5.
-- [ ] Merge `features.py and its tests by pull request from branch b/features (M6); Dev A reviews and you both confirm main is green before S8`.
-- [ ] **SYNC S8 (B → A)** – tell Dev A `features.py` is merged. Dev A pulls and runs `pytest tests/test_features.py`; it passes. Tick when Dev A confirms.
+- [x] **Disappearance context (4):** `ctx` columns as they are, except seconds-since-seen divided by `occlusion.ctx_cap_s` (0–1). The "detected flag" above comes from `present`. ✅
+- [x] Clip every feature to \[−10, 10\]; assert no NaN leaves the function. ✅
+- [x] Expose the feature names as `FEATURE_NAMES` (51 strings) so the baseline can index `log_bbox_aspect` and `hip_height` by name. ✅
+- [x] `tests/test_features.py`: output (30, 51); a window whose last 10 frames are not present still returns finite values and carries the `ctx` values through; doubling all coordinates leaves shape features unchanged; a mirrored skeleton gives the same torso angle and hip height; 40% NaN frames still returns finite values; a synthetic standing-then-lying sequence moves torso angle from about 0 to about 0.5. ✅ *plan's 6 tests plus a gap-fill test*
+- [x] Merge `features.py and its tests by pull request from branch b/features (M6); Dev A reviews and you both confirm main is green before S8`. ✅ *merged as PR #10*
+- [ ] **SYNC S8 (B → A)** – tell Dev A `features.py` is merged. Dev A pulls and runs `pytest tests/test_features.py`; it passes. Tick when Dev A confirms. ⏳ *features.py merged (PR #10); waiting for Dev A to confirm*
 
 Feature z-scoring (mean and std over train windows only) happens in `06_train.py` and is saved as `feat_stats.npz` next to each model; evaluation and live code load it from there.
 
@@ -327,7 +327,7 @@ Feature z-scoring (mean and std over train windows only) happens in `06_train.py
 
 Each example is a 2-second, 30-frame window labelled by what happens at its end. You need Dev A's labels (S5) to label windows and the QC'd index (S7) to build the real arrays; write and test the code on GMDCSA24 before S7 arrives.
 
-- [ ] **SYNC S5 (A → B)** – Dev A says `labels.py` is merged. Pull, run `pytest tests/test_labels.py`, and look at the frame labels of one fall clip together. Tick when you both agree they line up with the motion.
+- [x] **SYNC S5 (A → B)** – Dev A says `labels.py` is merged. Pull, run `pytest tests/test_labels.py`, and look at the frame labels of one fall clip together. Tick when you both agree they line up with the motion. ✅ *tests pass; frame labels line up on a fall clip*
 
 ### 5a. `src/fallsense/windows.py` – labelling rule
 
@@ -349,15 +349,15 @@ def window_label(y4: np.ndarray, detected: np.ndarray) -> int | None:
 
 ### 5b. `scripts/05_build_windows.py`
 
-- [ ] Read `index.csv`. Train and val use `qc_pass` clips only; test, staged\_test and OOPS use every clip (keep a `qc_pass` column so results can be cut both ways).
-- [ ] Per clip: load the .npz, take the 13 config keypoints, convert x and y to pixels with `width` and `height`, NaN where not detected.
-- [ ] Per clip: `present = detected`; `ctx = occlusion.last_seen_context(kp, present, wh, fps, ctx_cap_s)` over the **whole clip**, then slice per window (a window alone cannot know someone vanished 8 s ago).
-- [ ] Frame labels: `labels.segments_for(dataset, path)` → `clean_segments` → `frame_labels(segs, t_ms)` → `to4`.
-- [ ] Window ends: train and val every 8 frames, plus every 2 frames wherever a falling frame lies within 1 s of the window end; test, staged\_test and OOPS every 3 frames.
-- [ ] Apply `window_label`; save per Contract 3 v2 (including `present` and `ctx`) with `np.savez_compressed` to `data\windows\{train,val,test,oops}.npz` (OOPS kept as its own file so it is never mixed into test).
-- [ ] Write `reports\windows_summary.csv`: counts by split × dataset × class. If falling is under 1% of train, lower the near-fall stride to 1.
-- [ ] Assertions that stop the script: no `clip_id` in two splits; no `(dataset, subject)` in both train and test (except `subject == -1` and the MCFD single-actor note); no window crosses a clip boundary; every `y` is 0–3.
-- [ ] Dry run on your GMDCSA24 skeletons before S7.
+- [x] Read `index.csv`. Train and val use `qc_pass` clips only; test, staged\_test and OOPS use every clip (keep a `qc_pass` column so results can be cut both ways). ✅ *--from-inventory builds a provisional index until S7*
+- [x] Per clip: load the .npz, take the 13 config keypoints, convert x and y to pixels with `width` and `height`, NaN where not detected. ✅
+- [x] Per clip: `present = detected`; `ctx = occlusion.last_seen_context(kp, present, wh, fps, ctx_cap_s)` over the **whole clip**, then slice per window (a window alone cannot know someone vanished 8 s ago). ✅ *uses Dev A's last_seen_context since M19*
+- [x] Frame labels: `labels.segments_for(dataset, path)` → `clean_segments` → `frame_labels(segs, t_ms)` → `to4`. ✅
+- [x] Window ends: train and val every 8 frames, plus every 2 frames wherever a falling frame lies within 1 s of the window end; test, staged\_test and OOPS every 3 frames. ✅
+- [x] Apply `window_label`; save per Contract 3 v2 (including `present` and `ctx`) with `np.savez_compressed` to `data\windows\{train,val,test,oops}.npz` (OOPS kept as its own file so it is never mixed into test). ✅
+- [x] Write `reports\windows_summary.csv`: counts by split × dataset × class. If falling is under 1% of train, lower the near-fall stride to 1. ✅ *warns if falling < 1% of train*
+- [x] Assertions that stop the script: no `clip_id` in two splits; no `(dataset, subject)` in both train and test (except `subject == -1` and the MCFD single-actor note); no window crosses a clip boundary; every `y` is 0–3. ✅
+- [x] Dry run on your GMDCSA24 skeletons before S7. ✅ *rebuilt 17 Oct after M19: train 1,308 / val 1,154 / test 1,094 windows; falling 49% of train*
 - [ ] **SYNC S7 (A → B)** – Dev A says core QC is done. Download Le2i skeletons, `index.csv` and `reports\qc\` from the shared folder; read out index row count and `qc_pass` counts per dataset; they match Dev A's. Tick when confirmed. Then run `05_build_windows.py` on all core sets.
 
 ### 5c. `src/fallsense/dataset.py` – augmentation
@@ -366,8 +366,8 @@ Augment raw keypoints, then call `make_features`.
 
 **Simulated occlusion (occlusion handling part 3).** Add a `ClipBank` that loads every train clip's 13-keypoint pixel array and `present` once (about 50 MB). In `__getitem__`, with augmentation on, occlude the window with probability `aug_p_fall` if a falling or fallen frame lies within `lookback_frames` before its end, else `aug_p_other`: take the clip's last `lookback_frames` frames up to the window end, pick an onset (for falls, between fall start and window end; otherwise anywhere), call Dev A's `occlusion.simulate_occlusion` (mode `rise` or `box`, 50/50), recompute `last_seen_context` on that span, keep the last 30 frames. Keep the label. Never occlude val, test, staged\_test or OOPS.
 
-- [ ] **SYNC S16 (A → B)** – Dev A says `occlusion.py` is merged. Pull, run `pytest tests/test_occlusion.py`, read `reports/occlusion_realism.md`, wire `simulate_occlusion` into `dataset.py`. Tick when Dev A agrees the hook is right.
-- [ ] Check by eye: render 5 occluded training windows (skeleton on black) for falls and 5 for walking; the skeleton should sink and vanish for falls and vanish without dropping for walking.
+- [ ] **SYNC S16 (A → B)** – Dev A says `occlusion.py` is merged. Pull, run `pytest tests/test_occlusion.py`, read `reports/occlusion_realism.md`, wire `simulate_occlusion` into `dataset.py`. Tick when Dev A agrees the hook is right. ⏳ *Dev B side done 17 Oct: test_occlusion passes, realism report read, ClipBank hook runs Dev A's simulate_occlusion (new test in test_dataset.py); waiting for Dev A to agree*
+- [x] Check by eye: render 5 occluded training windows (skeleton on black) for falls and 5 for walking; the skeleton should sink and vanish for falls and vanish without dropping for walking. ✅ *GMDCSA24 via ClipBank + Dev A's simulate_occlusion: falls sink then vanish (rise) or drop out briefly (box); ADL vanishes without dropping*
 
 ```python
 class WindowDataset(torch.utils.data.Dataset):
@@ -406,7 +406,7 @@ class WindowDataset(torch.utils.data.Dataset):
 
 ### 5d. `tests/test_windows.py`
 
-- [ ] A window ending 0.5 s into a 1 s fall is falling; 3 s after the fall with the person on the floor is fallen; a sit-down is controlled\_low; a clip under 30 frames gives zero windows; the split assertions fire on a deliberately leaked toy index. Merge windows.py, dataset.py, 05\_build\_windows.py and these tests by pull request from branch b/windows (M7) before S7; Dev A reviews.
+- [x] A window ending 0.5 s into a 1 s fall is falling; 3 s after the fall with the person on the floor is fallen; a sit-down is controlled\_low; a clip under 30 frames gives zero windows; the split assertions fire on a deliberately leaked toy index. Merge windows.py, dataset.py, 05\_build\_windows.py and these tests by pull request from branch b/windows (M7) before S7; Dev A reviews. ✅ *merged as PR #12 (M7)*
 
 Later: after **S11** (extras) and **S13** (staged), rerun `05_build_windows.py`; those syncs are in Steps 6 and 8.
 
@@ -438,19 +438,19 @@ class FallTCN(nn.Module):
     BatchNorm + ReLU + Dropout(0.1), then concat(mean over time, last step) -> Linear."""
 ```
 
-- [ ] `tests/test_model.py`: both models map (8, 30, 51) to (8, 4); a 50-step overfit on 64 windows drives loss near zero. Merge models.py, 06\_train.py and this test by pull request from branch b/models (M9) once one run trains.
+- [x] `tests/test_model.py`: both models map (8, 30, 51) to (8, 4); a 50-step overfit on 64 windows drives loss near zero. Merge models.py, 06\_train.py and this test by pull request from branch b/models (M9) once one run trains. ✅ *merged as PR #13 (M9)*
 
 ### 6b. `scripts/06_train.py`
 
-- [ ] Flags: `--model gru|tcn`, `--train-sets`, `--augment/--no-augment`, `--seed`, `--out models\<run-name>`.
-- [ ] Seed `random`, `numpy`, `torch`; `torch.set_num_threads(os.cpu_count() - 1)`.
-- [ ] Compute feature `mu`/`sd` over train windows (no augmentation); save `feat_stats.npz`.
-- [ ] Loss `CrossEntropyLoss(weight=w, label_smoothing=0.05)`, `w_c = sqrt(N / (4 * n_c))` renormalised to mean 1 (weights, not an oversampling sampler).
-- [ ] AdamW lr 2e-3, weight decay 1e-4, batch 256, cosine decay over at most 40 epochs, gradient clip 1.0.
-- [ ] Select on val each epoch: falling-vs-rest average precision, tie-broken by 4-class macro F1; early stop after 8 epochs without improvement.
-- [ ] DataLoader `num_workers=4, persistent_workers=True`; the whole script under `if __name__ == "__main__":` (Windows workers crash otherwise).
-- [ ] Save `model.pt`, `feat_stats.npz`, config copy, `train_log.csv`, `val_logits.npy`, confusion matrix PNG.
-- [ ] Print seconds per epoch after epoch 1 and an ETA. If an epoch passes 2 minutes, precompute 3 augmented copies of train features to `data\windows\train_aug.npz` and train from that (about 10× faster).
+- [x] Flags: `--model gru|tcn`, `--train-sets`, `--augment/--no-augment`, `--seed`, `--out models\<run-name>`. ✅ *plus --occlude (E7), --windows-dir, --epochs, --workers*
+- [x] Seed `random`, `numpy`, `torch`; `torch.set_num_threads(os.cpu_count() - 1)`. ✅
+- [x] Compute feature `mu`/`sd` over train windows (no augmentation); save `feat_stats.npz`. ✅
+- [x] Loss `CrossEntropyLoss(weight=w, label_smoothing=0.05)`, `w_c = sqrt(N / (4 * n_c))` renormalised to mean 1 (weights, not an oversampling sampler). ✅
+- [x] AdamW lr 2e-3, weight decay 1e-4, batch 256, cosine decay over at most 40 epochs, gradient clip 1.0. ✅
+- [x] Select on val each epoch: falling-vs-rest average precision, tie-broken by 4-class macro F1; early stop after 8 epochs without improvement. ✅
+- [x] DataLoader `num_workers=4, persistent_workers=True`; the whole script under `if __name__ == "__main__":` (Windows workers crash otherwise). ✅
+- [x] Save `model.pt`, `feat_stats.npz`, config copy, `train_log.csv`, `val_logits.npy`, confusion matrix PNG. ✅
+- [x] Print seconds per epoch after epoch 1 and an ETA. If an epoch passes 2 minutes, precompute 3 augmented copies of train features to `data\windows\train_aug.npz` and train from that (about 10× faster). ✅ *about 3 s/epoch on the GMDCSA24 dry run; train_aug.npz not needed yet*
 
 | Train set | Approx. train windows | Per epoch | One run | E-row, 3 seeds |
 | --- | --- | --- | --- | --- |
@@ -460,13 +460,13 @@ class FallTCN(nn.Module):
 
 ### 6c. Event logic and score writer in `src/fallsense/calibrate.py` (Dev A is waiting on this)
 
-- [ ] `write_scores(model_dir, split_npz, out_parquet)`: run the model on every window, apply temperature if present, write Contract 4 rows (`clip_id, end_frame, t_s, p_upright, p_falling, p_fallen, p_controlled_low`).
-- [ ] `alerts_from_scores(scores, thresholds) -> DataFrame[clip_id, t_s, level]` per clip in time order:
+- [x] `write_scores(model_dir, split_npz, out_parquet)`: run the model on every window, apply temperature if present, write Contract 4 rows (`clip_id, end_frame, t_s, p_upright, p_falling, p_fallen, p_controlled_low`). ✅ *temperature from argument or thresholds.yaml; tested on toy runs and a 3-epoch dry-run GRU (1,154 val rows)*
+- [x] `alerts_from_scores(scores, thresholds) -> DataFrame[clip_id, t_s, level]` per clip in time order: ✅ *returns clip_id, t_s, level, score; refractory blocks same-or-lower levels only, so CHECK -> FALL -> ON FLOOR can escalate; ON FLOOR once per continuous run*
   - fall score `s` = `p_falling`, max over the last 3 evaluation windows (0.6 s)
   - `s >= t_high` → FALL; `t_low <= s < t_high` → CHECK
   - `p_fallen > 0.5` continuously for `on_floor_seconds` → ON FLOOR (use 5 s on public clips, 20 s in the demo; read from `thresholds.yaml`)
   - 30 s refractory after any alert
-- [ ] Merge calibrate.py (write\_scores, alerts\_from\_scores) by pull request from branch b/events (M10); Dev A reviews, because their evaluator and tests need it on `main`.
+- [ ] Merge calibrate.py (write\_scores, alerts\_from\_scores) by pull request from branch b/events (M10); Dev A reviews, because their evaluator and tests need it on `main`. ⏳ *ready on b/events (13 tests in test_calibrate.py); PR pending*
 - [ ] **SYNC S9 (B → A)** – tell Dev A both functions are merged. Dev A runs `tests/test_metrics.py` against them; it passes. Tick when Dev A confirms.
 
 ### 6d. Experiments (one row each in `reports\experiments.csv`, 3 seeds)
