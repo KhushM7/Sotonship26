@@ -68,7 +68,7 @@ Every E-row has 3 seeds (1, 2, 3). Run names: `e<row>_<model>_s<seed>` (for exam
 | E5 | best of E2/E3 | `06_train.py --model <best> --augment --train-sets GMDCSA24 caucafall le2i mcfd occu of-syn --seed 1 --out models\e5_<best>_s1` | 3 |
 | E6 | best of E4/E5 | as the best row, `--train-sets` without `caucafall` | 3 |
 | E7 | best of E4/E5 | as the best row plus `--occlude` | 3 |
-| E8 | E1–E7 val results | best config on the care-home subset vs all data (deferred; see `reports/data_scope_review.md` if restored) | 3–6 |
+| E8 | E1–E7 val results | best config on the care-home subset vs all data (deferred; see `reports/data_scope_review.md`) | 3–6 |
 
 Dependency waves – everything inside a wave can run at the same time:
 
