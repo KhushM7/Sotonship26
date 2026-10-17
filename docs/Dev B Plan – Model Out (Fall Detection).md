@@ -490,7 +490,6 @@ class FallTCN(nn.Module):
 - [ ] **SYNC S11 (A → B)** – Dev A says OCCU, OF-Syn subset and OOPS skeletons are QC'd and uploaded with a new `index.csv`. Download, rerun `05_build_windows.py`, and read out window counts for OCCU, OF-Syn and OOPS. Tick when Dev A agrees.
 - [ ] Train E4, E5, E6. Keep an addition only if it improves val; pick the final configuration on val only.
 - [ ] Train E7 (best of E4/E5 plus simulated occlusion) against the same config without it. Write the val results (all of val, OCCU val, false alerts per hour elsewhere), both run names and the keep/drop decision into the "E7 outcome" section of `reports/occlusion_realism.md` and a row in `reports/experiments.csv`. If E7 does not help, say so there; the report lists what to revisit in the simulation.
-- [ ] Train E8 (care-home subset vs all data, same config) once E1–E5 have val results; compare on the in-domain rows and write the outcome into `reports/data_scope_review.md` ("E8 outcome") and `reports/experiments.csv`. Deferred data cuts are listed there.
 
 ## Step 7 – Calibration and CHECK thresholds
 
