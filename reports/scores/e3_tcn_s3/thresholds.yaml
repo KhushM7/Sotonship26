@@ -1,0 +1,5 @@
+t_high: 0.5
+t_low: 0.5
+temperature: 1.0
+on_floor_seconds_eval: 5
+on_floor_seconds_demo: 20
