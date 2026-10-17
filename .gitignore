@@ -10,3 +10,6 @@ __pycache__/
 .idea/
 
 reports/extract_log.csv
+
+reports/scores/**/*.parquet
+reports/alerts/**/*.parquet
