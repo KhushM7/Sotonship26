@@ -353,12 +353,12 @@ def window_label(y4: np.ndarray, detected: np.ndarray) -> int | None:
 - [x] Per clip: load the .npz, take the 13 config keypoints, convert x and y to pixels with `width` and `height`, NaN where not detected. ✅
 - [x] Per clip: `present = detected`; `ctx = occlusion.last_seen_context(kp, present, wh, fps, ctx_cap_s)` over the **whole clip**, then slice per window (a window alone cannot know someone vanished 8 s ago). ✅ *uses Dev A's last_seen_context since M19*
 - [x] Frame labels: `labels.segments_for(dataset, path)` → `clean_segments` → `frame_labels(segs, t_ms)` → `to4`. ✅
-- [x] Window ends: train and val every 8 frames, plus every 2 frames wherever a falling frame lies within 1 s of the window end; test, staged\_test and OOPS every 3 frames. ✅
+- [x] Window ends: train and val every 8 frames, plus every 2 frames wherever a falling frame lies within 1 s of the window end; test, staged\_test and OOPS every 3 frames. ✅ *changed 17 Oct after Dev A's E1–E3 review: val is cut every 3 frames like test (the dense near-fall stride flattered event metrics and calibration); val now 12,454 windows*
 - [x] Apply `window_label`; save per Contract 3 v2 (including `present` and `ctx`) with `np.savez_compressed` to `data\windows\{train,val,test,oops}.npz` (OOPS kept as its own file so it is never mixed into test). ✅
 - [x] Write `reports\windows_summary.csv`: counts by split × dataset × class. If falling is under 1% of train, lower the near-fall stride to 1. ✅ *warns if falling < 1% of train*
 - [x] Assertions that stop the script: no `clip_id` in two splits; no `(dataset, subject)` in both train and test (except `subject == -1` and the MCFD single-actor note); no window crosses a clip boundary; every `y` is 0–3. ✅
 - [x] Dry run on your GMDCSA24 skeletons before S7. ✅ *rebuilt 17 Oct after M19: train 1,308 / val 1,154 / test 1,094 windows; falling 49% of train*
-- [ ] **SYNC S7 (A → B)** – Dev A says core QC is done. Download Le2i skeletons, `index.csv` and `reports\qc\` from the shared folder; read out index row count and `qc_pass` counts per dataset; they match Dev A's. Tick when confirmed. Then run `05_build_windows.py` on all core sets.
+- [x] **SYNC S7 (A → B)** – Dev A says core QC is done. Download Le2i skeletons, `index.csv` and `reports\qc\` from the shared folder; read out index row count and `qc_pass` counts per dataset; they match Dev A's. Tick when confirmed. Then run `05_build_windows.py` on all core sets. ✅ *done with S11 (one index for all seven datasets): 6,802 rows; qc_pass GMDCSA24 155/160, caucafall 86/97, le2i 174/190, mcfd 118/192, occu 10/10, of-syn 5,313/5,335, OOPS 619/818 (6,475) – matches Dev A*
 
 ### 5c. `src/fallsense/dataset.py` – augmentation
 
@@ -366,7 +366,7 @@ Augment raw keypoints, then call `make_features`.
 
 **Simulated occlusion (occlusion handling part 3).** Add a `ClipBank` that loads every train clip's 13-keypoint pixel array and `present` once (about 50 MB). In `__getitem__`, with augmentation on, occlude the window with probability `aug_p_fall` if a falling or fallen frame lies within `lookback_frames` before its end, else `aug_p_other`: take the clip's last `lookback_frames` frames up to the window end, pick an onset (for falls, between fall start and window end; otherwise anywhere), call Dev A's `occlusion.simulate_occlusion` (mode `rise` or `box`, 50/50), recompute `last_seen_context` on that span, keep the last 30 frames. Keep the label. Never occlude val, test, staged\_test or OOPS.
 
-- [ ] **SYNC S16 (A → B)** – Dev A says `occlusion.py` is merged. Pull, run `pytest tests/test_occlusion.py`, read `reports/occlusion_realism.md`, wire `simulate_occlusion` into `dataset.py`. Tick when Dev A agrees the hook is right. ⏳ *Dev B side done 17 Oct: test_occlusion passes, realism report read, ClipBank hook runs Dev A's simulate_occlusion (new test in test_dataset.py); waiting for Dev A to agree*
+- [x] **SYNC S16 (A → B)** – Dev A says `occlusion.py` is merged. Pull, run `pytest tests/test_occlusion.py`, read `reports/occlusion_realism.md`, wire `simulate_occlusion` into `dataset.py`. Tick when Dev A agrees the hook is right. ✅ *test_occlusion 14 passed, realism report read, ClipBank hook runs simulate_occlusion*
 - [x] Check by eye: render 5 occluded training windows (skeleton on black) for falls and 5 for walking; the skeleton should sink and vanish for falls and vanish without dropping for walking. ✅ *GMDCSA24 via ClipBank + Dev A's simulate_occlusion: falls sink then vanish (rise) or drop out briefly (box); ADL vanishes without dropping*
 
 ```python
@@ -447,7 +447,7 @@ class FallTCN(nn.Module):
 - [x] Compute feature `mu`/`sd` over train windows (no augmentation); save `feat_stats.npz`. ✅
 - [x] Loss `CrossEntropyLoss(weight=w, label_smoothing=0.05)`, `w_c = sqrt(N / (4 * n_c))` renormalised to mean 1 (weights, not an oversampling sampler). ✅
 - [x] AdamW lr 2e-3, weight decay 1e-4, batch 256, cosine decay over at most 40 epochs, gradient clip 1.0. ✅
-- [x] Select on val each epoch: falling-vs-rest average precision, tie-broken by 4-class macro F1; early stop after 8 epochs without improvement. ✅
+- [x] Select on val each epoch: falling-vs-rest average precision, tie-broken by 4-class macro F1; early stop after 8 epochs without improvement. ✅ *since 17 Oct: selected on val windows from the `--train-sets` datasets only; all-val AP/F1 logged as `val_all_*`; `--threads` added; config.yaml records the code version and laptop*
 - [x] DataLoader `num_workers=4, persistent_workers=True`; the whole script under `if __name__ == "__main__":` (Windows workers crash otherwise). ✅
 - [x] Save `model.pt`, `feat_stats.npz`, config copy, `train_log.csv`, `val_logits.npy`, confusion matrix PNG. ✅
 - [x] Print seconds per epoch after epoch 1 and an ETA. If an epoch passes 2 minutes, precompute 3 augmented copies of train features to `data\windows\train_aug.npz` and train from that (about 10× faster). ✅ *about 3 s/epoch on the GMDCSA24 dry run; train_aug.npz not needed yet*
@@ -484,11 +484,11 @@ class FallTCN(nn.Module):
 
 "Core" = GMDCSA24, CAUCAFall, Le2i, MCFD.
 
-- [ ] Train E1; write its val scores with `write_scores` (temperature 1, temporary thresholds 0.5/0.5).
-- [ ] **SYNC S10 (A → B)** – Dev A says `08_evaluate.py` and E0 val results are merged. Run `python scripts\08_evaluate.py --model <E1 run> --split val`; both read out sensitivity and false FALL alerts per hour for E0 and E1. Tick when the numbers look sensible to both.
-- [ ] Train E2 and E3; compare on val with the evaluator.
-- [ ] **SYNC S11 (A → B)** – Dev A says OCCU, OF-Syn subset and OOPS skeletons are QC'd and uploaded with a new `index.csv`. Download, rerun `05_build_windows.py`, and read out window counts for OCCU, OF-Syn and OOPS. Tick when Dev A agrees.
-- [ ] Train E4, E5, E6. Keep an addition only if it improves val; pick the final configuration on val only.
+- [x] Train E1; write its val scores with `write_scores` (temperature 1, temporary thresholds 0.5/0.5). ✅ *retrained 17 Oct after Dev A's review fixes (val at stride 3, selection on train-set val windows); 3 seeds*
+- [x] **SYNC S10 (A → B)** – Dev A says `08_evaluate.py` and E0 val results are merged. Run `python scripts\08_evaluate.py --model <E1 run> --split val`; both read out sensitivity and false FALL alerts per hour for E0 and E1. Tick when the numbers look sensible to both. ✅ *Dev A evaluated E0–E3 on val (PR #23); evaluator and windows match across laptops (logits within 2e-7)*
+- [x] Train E2 and E3; compare on val with the evaluator. ✅ *3 seeds each, calibrated and evaluated with 08_evaluate.py; reports/eval/summary_val.md*
+- [x] **SYNC S11 (A → B)** – Dev A says OCCU, OF-Syn subset and OOPS skeletons are QC'd and uploaded with a new `index.csv`. Download, rerun `05_build_windows.py`, and read out window counts for OCCU, OF-Syn and OOPS. Tick when Dev A agrees. ✅ *windows rebuilt: train 53,429, val 12,454 (stride 3), test 14,673, oops 38,872; OCCU train 3,029, OF-Syn train 32,098*
+- [ ] Train E4, E5, E6. Keep an addition only if it improves val; pick the final configuration on val only. ⏳ *E4 on Dev B's laptop: GRU 3/3 trained (s1, s2 calibrated + evaluated; s3 not yet), TCN 1/3 (s1 trained, not calibrated). E4 rest, E5–E7 handed to Dev A's laptop*
 - [ ] Train E7 (best of E4/E5 plus simulated occlusion) against the same config without it. Write the val results (all of val, OCCU val, false alerts per hour elsewhere), both run names and the keep/drop decision into the "E7 outcome" section of `reports/occlusion_realism.md` and a row in `reports/experiments.csv`. If E7 does not help, say so there; the report lists what to revisit in the simulation.
 - [ ] Train E8 (care-home subset vs all data, same config) once E1–E5 have val results; compare on the in-domain rows and write the outcome into `reports/data_scope_review.md` ("E8 outcome") and `reports/experiments.csv`. Deferred data cuts are listed there.
 
@@ -498,13 +498,13 @@ Turn the chosen model's probabilities into FALL, CHECK or silent using two thres
 
 ### `scripts/07_calibrate.py`
 
-- [ ] **Temperature scaling:** fit one scalar T on `val_logits.npy` by minimising negative log-likelihood (`torch.optim.LBFGS`, start T = 1.0, 50 iterations). Report expected calibration error before and after (15 bins).
-- [ ] Rewrite val scores with `write_scores` using T.
-- [ ] **Threshold search on val:** sweep `t_high` and `t_low` over 0.05–0.95 in steps of 0.05, using `alerts_from_scores` and Dev A's metrics.
+- [x] **Temperature scaling:** fit one scalar T on `val_logits.npy` by minimising negative log-likelihood (`torch.optim.LBFGS`, start T = 1.0, 50 iterations). Report expected calibration error before and after (15 bins). ✅ *T = 1.3–1.8 (models overconfident); ECE 0.09–0.21 -> 0.02–0.06*
+- [x] Rewrite val scores with `write_scores` using T. ✅
+- [x] **Threshold search on val:** sweep `t_high` and `t_low` over 0.05–0.95 in steps of 0.05, using `alerts_from_scores` and Dev A's metrics. ✅ *rule changed with Dev A: t_high = highest threshold reaching --target-fall (0.90), else highest within 3 points of the best achievable sensitivity (plateau); t_low the same for FALL-or-CHECK 0.95. Val has only ~45 min of normal activity, so the plan's <= 0.5 false/h rule cannot work*
   - `t_high` = lowest value giving at most 0.5 false FALL alerts per hour of normal activity
   - `t_low` = highest value keeping event sensitivity (FALL or CHECK) at 95% or above; if none reaches 95%, take the best and note it
-- [ ] Save `temperature`, `t_high`, `t_low`, `on_floor_seconds_eval: 5`, `on_floor_seconds_demo: 20` to `models\<run>\thresholds.yaml`.
-- [ ] Run `08_evaluate.py --model <run> --split val` and check the coverage–error curve looks right before freezing. Merge 07\_calibrate.py by pull request from branch b/calibrate (M14) before S14.
+- [x] Save `temperature`, `t_high`, `t_low`, `on_floor_seconds_eval: 5`, `on_floor_seconds_demo: 20` to `models\<run>\thresholds.yaml`. ✅ *plus a calibration block (targets, ECE, val sensitivity, false FALL/h with interval) and calibration.csv*
+- [ ] Run `08_evaluate.py --model <run> --split val` and check the coverage–error curve looks right before freezing. Merge 07\_calibrate.py by pull request from branch b/calibrate (M14) before S14. ⏳ *done for E1–E3 and E4 GRU s1–s2; 07_calibrate.py on b/calibrate (M14) awaiting PR*
 
 Rule: test, staged\_test and OOPS are not opened until the model is frozen at S14.
 
