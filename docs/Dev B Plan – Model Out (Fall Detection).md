@@ -26,6 +26,8 @@ Work top to bottom and tick each box. Wherever a box marked **SYNC** appears, st
 | S13 | A → B | Staged clips labelled (B double-checks fall times), extracted, `staged_test` rows in `index.csv` | B builds `staged_test.npz` and reads out clip and window counts |
 | S14 | B → A | Frozen model: `model.pt`, `feat_stats.npz`, `thresholds.yaml`, score files for test, staged\_test and OOPS | A runs the final evaluation once; both review the report |
 | S15 | Both | Live demo at 10+ fps, skeleton-only display; definition-of-done checklist | Walk the checklist together |
+| S16 | A → B | `occlusion.py` merged (context, disappearance finder, simulation) and `reports/occlusion_realism.md` | B runs `pytest tests/test_occlusion.py` and reads the realism report |
+| S17 | A → B | `tracker.py` merged | B wires `DisappearanceTracker` and `LastSeenState` into `09_live.py`; both see a CHECK when someone ducks behind a chair and stays down |
 
 Compute times in this doc are estimates; replace them with measured numbers as you go.
 
@@ -146,6 +148,9 @@ Rules:
 | M15 | B | `b/live` | `09_live.py` | Runs at 10 fps or more | S15 |
 | M16 | A and B | `a/docs`, `b/readme` | `DATA_CARD.md`, README sections | Before the final check | S15 |
 | M17 | A | `main` | Tag `v1-hackathon` | Right after S15 | – |
+| M18 | B | `b/contract-v2` | `default.yaml` v2 with the `occlusion` block, `windows.py` SCHEMA with `present` and `ctx`, `test_windows.py` | Right after S3 | M19 |
+| M19 | A | `a/occlusion` | `occlusion.py`, `test_occlusion.py`, `reports/occlusion_realism.md` | Tests pass and the realism check matches OCCU | S16 |
+| M20 | A | `a/tracker` | `tracker.py`, `test_tracker.py`, tracker rows in `08_evaluate.py` | Tests pass; scored on val | S17 |
 
 ## Step 2 – Data contracts (identical in both docs)
 
@@ -158,13 +163,13 @@ fallsense/
   configs/default.yaml           B
   src/fallsense/
     config.py                    B
-    labels.py  io_video.py  pose.py  baseline.py  metrics.py      A
+    labels.py  io_video.py  pose.py  baseline.py  metrics.py  occlusion.py  tracker.py   A
     features.py  windows.py  dataset.py  models.py  calibrate.py  B
   scripts/
     00_check_env.py  05_build_windows.py  06_train.py  07_calibrate.py  09_live.py     B
     02_inventory.py  03_extract_skeletons.py  04_qc_skeletons.py  08_evaluate.py
     record_staged.py  label_tool.py                                               A
-  tests/   test_labels.py test_metrics.py (A)   test_features.py test_windows.py test_model.py (B)
+  tests/   test_labels.py test_metrics.py test_occlusion.py test_tracker.py (A)   test_features.py test_windows.py test_model.py (B)
   data/ -> junction to C:\fall-data (gitignored)
 ```
 
@@ -202,7 +207,81 @@ No labels inside the .npz; labels are joined later so a mapping change never for
 
 `reports/scores/{model}/{split}.parquet`: `clip_id, end_frame, t_s, p_upright, p_falling, p_fallen, p_controlled_low`.
 
-- [ ] **SYNC S3 (both)** – read this section together; both say "agreed" before writing any code.
+### Occlusion handling – schema_version 2 (identical in all three plans)
+
+**Why.** A person who falls behind furniture disappears from the skeleton stream. On OCCU, MediaPipe finds the person in 99% of standing frames but in 3% of fallen frames (208 of 7,445), because they are fully hidden behind the bed. The skeleton file records "no person", but not *how* they vanished, and that context separates hidden falls from people leaving: of 60 disappearances during OCCU falls, 98% happened mid-frame (median 0.35 of the frame from the nearest border) with the hips dropping at 0.32 frame heights/s; disappearances outside falls happen near a border (median 0.11) while moving slowly (0.09). Background and the full list of ideas: `docs/occlusion-ideas.md`.
+
+Three parts, used together:
+
+1. **Disappearance context as model input.** Every window carries a per-frame "pose present" flag and four "last seen" values computed over the whole clip, so the model can tell "dropped fast mid-frame, then gone" (fallen) from "walked to the edge, then gone" (left the room).
+2. **Disappearance tracker as a safety net.** A rule-based state machine (visible / left the frame / hidden after going down) raises CHECK when someone stays hidden after going down for `hidden_check_s`. It needs no training, runs offline and live, and is scored on its own and merged with the model's alerts.
+3. **Simulated occlusion in training.** Visible falls *and* normal activity from every train set are occluded on the fly, gradually and realistically, so the model learns hidden falls from thousands of examples instead of OCCU's ~50 train falls. Nothing is copied to disk.
+
+**Who owns what.** Dev A: `occlusion.py` (context, disappearance finder, simulation, live incremental state), `tracker.py`, the QC change, the realism check and the evaluation rows. Dev B: config v2, `windows.py` / `05_build_windows.py` changes, the four new features, the `dataset.py` hook, the `09_live.py` hook and experiment E7.
+
+**`src/fallsense/occlusion.py` (Dev A; pure numpy; offline and live).** `kp` is (T, 13, 3) pixel x, y, visibility, the same array `features.py` takes.
+
+| Function | Does |
+| --- | --- |
+| `last_seen_context(kp, present, wh, fps, cap_s) -> (T, 4)` | per frame: seconds since the pose was last present (0 while visible, capped at `cap_s`, `cap_s` if never seen); last visible hip height (y / H); last hip vertical speed (frame heights/s over the last 5 present frames, + = down); last hip distance to the nearest border (0–0.5) |
+| `LastSeenState` | the same four values updated one frame at a time, for `09_live.py` |
+| `find_disappearances(kp, present, wh, fps, cfg) -> DataFrame` | every gap of at least 1 s after at least 5 present frames: start, end, edge distance, descent speed, and `kind` = `left` (lost within `edge_margin` of a border or not descending) or `hidden_down` (lost mid-frame while descending faster than `descent_speed`) |
+| `simulate_occlusion(kp, present, wh, rng, onset, mode, cfg) -> (kp, present)` | hides the person from frame `onset` on. `rise`: an occluder edge at a fixed image height; keypoints below it are lost, and the whole frame is lost once fewer than `min_visible_kp` remain, so ankles vanish first and the head last, as when sinking behind a bed. `box`: a fixed rectangle over 20–50% of the person's box (partial occlusion). Both add 3–8 frames of flicker at the boundary before the loss is complete. |
+
+**Contract 2 v2 (index), Dev A.** Adds `hidden_frac_fall` (share of falling/fallen frames inside a `hidden_down` gap) and `n_hidden_gaps`. A frame counts as *covered* if the pose is detected or the frame lies inside a `hidden_down` gap; QC becomes `qc_pass = det_rate_covered >= 0.6 and (no fall frames or det_rate_fall_covered >= 0.5) and not id_switch`, with `det_rate` and `det_rate_fall` still reported raw. OCCU train and val clips then pass on their merits instead of being dropped.
+
+**Contract 3 v2 (windows), Dev B.** Adds two keys:
+
+| Key | dtype, shape | Meaning |
+| --- | --- | --- |
+| `present` | bool (N, 30) | pose detected in that frame |
+| `ctx` | float32 (N, 30, 4) | `last_seen_context` for the window's frames, computed over the whole clip (not just the window) |
+
+The window drop rule changes from "over 40% of frames have no pose" to "over 40% of frames have no pose *and* no recent context", i.e. `(~present & (ctx[..., 0] >= cap_s)).mean() > 0.40`, so hidden-fallen windows are kept with their `fallen` label.
+
+**Contract 4** is unchanged.
+
+**Contract 5 (new): tracker alerts, Dev A writes, the evaluator reads.** `reports/alerts/tracker/{split}.parquet`: `clip_id` int32, `t_s` float32, `level` (always `CHECK`), `reason` (`hidden_down`).
+
+**Features (Dev B).** `make_features(kp, wh, present, ctx)` returns (T, 51): the existing 47 plus the four context values (seconds since seen / `cap_s`, last hip height, last hip vertical speed, last edge distance). The existing "detected flag" feature is taken from `present`.
+
+**Training-time simulation (Dev B calls Dev A's function).** In `dataset.py`, a `ClipBank` keeps every train clip's 13-keypoint pixel array and `present` in memory (about 50 MB for all train sets). With augmentation on, a window is occluded with probability `aug_p_fall` if a falling or fallen frame lies within `lookback_frames` before its end, otherwise with `aug_p_other`. To occlude: take the clip's last `lookback_frames` frames up to the window end, pick an onset inside them (for falls, between the fall start and the window end), call `simulate_occlusion`, recompute `last_seen_context` on that span, and keep the last 30 frames. The label does not change: a simulated hidden fall is still `fallen`, a person occluded while walking is still `upright`. Occluding normal activity matters as much as occluding falls; without it the model would learn "vanished means fallen". Val, test, staged_test and OOPS are never occluded artificially; OCCU test and the staged hidden-fall clips are the real-occlusion check.
+
+**Realism check (Dev A).** `reports/occlusion_realism.md` compares simulated disappearances on Le2i and OF-Syn falls with real OCCU ones on edge distance, descent speed, gap length and keypoint loss order; adjust the simulation parameters until they match before Dev B trains E7.
+
+**Config additions (`configs/default.yaml`, Dev B):**
+
+```yaml
+schema_version: 2
+occlusion:
+  ctx_cap_s: 20          # cap on seconds-since-seen (matches on_floor_seconds)
+  edge_margin: 0.10      # lost within this of a border -> "left"
+  descent_speed: 0.15    # hips dropping faster than this (frame heights/s) when lost -> "hidden_down"
+  hidden_check_s: 3.0    # tracker: hidden_down for this long -> CHECK; tuned on val
+  min_visible_kp: 4      # simulation: fewer visible keypoints -> whole frame lost
+  lookback_frames: 330   # simulation: clip history used (window + ctx_cap_s at 15 fps)
+  aug_p_fall: 0.25       # simulation: probability for windows near a fall
+  aug_p_other: 0.15      # simulation: probability for all other windows
+```
+
+`edge_margin` and `descent_speed` start from the OCCU/Le2i measurement above; `hidden_check_s` is tuned on val only.
+
+**Evaluation (Dev A).** `08_evaluate.py` adds rows for model + tracker and baseline + tracker, and reports OCCU test and the staged hidden-fall clips separately with and without each part. Experiment **E7** (best config + simulated occlusion vs the same config without it) answers "does simulated occlusion help?".
+
+**Merges and syncs added** (numbered after M17 and S15 so nothing else is renumbered):
+
+| Id | Who | Branch / direction | What | When |
+| --- | --- | --- | --- | --- |
+| M18 | B | `b/contract-v2` | `default.yaml` v2 with the `occlusion` block; `windows.py` SCHEMA with `present` and `ctx`; updated `test_windows.py` | Right after S3 |
+| M19 | A | `a/occlusion` | `occlusion.py`, `tests/test_occlusion.py`, `reports/occlusion_realism.md` | After M5, before S7 |
+| M20 | A | `a/tracker` | `tracker.py`, `tests/test_tracker.py`, tracker rows in `08_evaluate.py` | With or before M11 |
+| S16 | A → B | sync | `occlusion.py` merged; Dev B runs `pytest tests/test_occlusion.py` and reads the realism report | Before Dev B finishes M7 |
+| S17 | A → B | sync | `tracker.py` merged; Dev B wires `DisappearanceTracker` and `LastSeenState` into `09_live.py` | Before M15 |
+
+**Extra time (rough; replace with measured).** Dev A 5–7 h: `occlusion.py` and tests 2–3 h, realism check 1 h, tracker and tests 2–3 h, QC and evaluation changes about 1 h. Dev B 3–4 h: contract v2 about 1 h, features and windows 1.5–2 h, `ClipBank` and the augmentation hook 1–1.5 h, live hook 0.5 h. Training takes about 20–50% longer per run because the occluded examples are harder; on CPU that is minutes.
+
+- [ ] **SYNC S3 (both)** – read this section together, including the occlusion handling above; both say "agreed" to `schema_version: 2` before writing any more code. Dev B then merges the contract v2 changes (M18).
+- [ ] **M18 (you)** – on branch `b/contract-v2`: bump `configs/default.yaml` to `schema_version: 2` and add the `occlusion` block; add `present` bool (N, 30) and `ctx` float32 (N, 30, 4) to `SCHEMA` in `windows.py` and to `save_windows`; extend `tests/test_windows.py` for the two keys. Pull request; Dev A reviews.
 
 ## Step 3 – Extract and share your three datasets
 
@@ -220,7 +299,7 @@ You run Dev A's scripts on your own videos (GMDCSA24, CAUCAFall, MCFD). `feature
 
 ## Step 4 – `features.py`
 
-One function, `make_features(kp, wh) -> (T, 47) float32`, used by training, evaluation, Dev A's rule baseline and the live demo, so there is no train/serve mismatch. Input `kp` is (T, 13, 3): pixel x, pixel y, visibility for the 13 config keypoints (multiply normalised x by width and y by height first). `wh` is (width, height).
+One function, `make_features(kp, wh, present, ctx) -> (T, 51) float32`, used by training, evaluation, Dev A's rule baseline and the live demo, so there is no train/serve mismatch. Input `kp` is (T, 13, 3): pixel x, pixel y, visibility for the 13 config keypoints (multiply normalised x by width and y by height first). `wh` is (width, height). `present` is (T,) bool and `ctx` is (T, 4) from Dev A's `occlusion.last_seen_context` (Contract 3 v2); until M19 lands, test with `ctx` computed by a stub that returns zeros while present.
 
 - [ ] **Gap fill:** per keypoint, forward-fill NaN gaps of up to 5 frames (0.33 s); anything still missing becomes 0 with visibility 0.
 - [ ] **Scale:** torso length L = distance from shoulder midpoint (keypoints 11, 12) to hip midpoint (23, 24), median over frames where all four have visibility above 0.5; fallback 0.25 × height; floor 0.05 × height.
@@ -235,9 +314,10 @@ One function, `make_features(kp, wh) -> (T, 47) float32`, used by training, eval
   - log bounding-box aspect = log(width / height) of visible keypoints (Dev A's baseline uses this and hip height)
   - mean visibility
   - detected flag (0/1)
+- [ ] **Disappearance context (4):** `ctx` columns as they are, except seconds-since-seen divided by `occlusion.ctx_cap_s` (0–1). The "detected flag" above comes from `present`.
 - [ ] Clip every feature to \[−10, 10\]; assert no NaN leaves the function.
-- [ ] Expose the feature names as `FEATURE_NAMES` (47 strings) so the baseline can index `log_bbox_aspect` and `hip_height` by name.
-- [ ] `tests/test_features.py`: output (30, 47); doubling all coordinates leaves shape features unchanged; a mirrored skeleton gives the same torso angle and hip height; 40% NaN frames still returns finite values; a synthetic standing-then-lying sequence moves torso angle from about 0 to about 0.5.
+- [ ] Expose the feature names as `FEATURE_NAMES` (51 strings) so the baseline can index `log_bbox_aspect` and `hip_height` by name.
+- [ ] `tests/test_features.py`: output (30, 51); a window whose last 10 frames are not present still returns finite values and carries the `ctx` values through; doubling all coordinates leaves shape features unchanged; a mirrored skeleton gives the same torso angle and hip height; 40% NaN frames still returns finite values; a synthetic standing-then-lying sequence moves torso angle from about 0 to about 0.5.
 - [ ] Merge `features.py and its tests by pull request from branch b/features (M6); Dev A reviews and you both confirm main is green before S8`.
 - [ ] **SYNC S8 (B → A)** – tell Dev A `features.py` is merged. Dev A pulls and runs `pytest tests/test_features.py`; it passes. Tick when Dev A confirms.
 
@@ -251,12 +331,13 @@ Each example is a 2-second, 30-frame window labelled by what happens at its end.
 
 ### 5a. `src/fallsense/windows.py` – labelling rule
 
-1. Drop the window if over 30% of frames are unlabelled or over 40% have no detected pose.
+1. Drop the window if over 30% of frames are unlabelled, or over 40% of frames have no pose **and no recent context** (`~present & (ctx[:, 0] >= ctx_cap_s)`). A person hidden after a fall has recent context, so those windows are kept and labelled `fallen` (Contract 3 v2).
 2. **falling** if at least 5 of the last 20 frames are labelled falling (falls are short; a majority rule would almost never fire).
 3. Otherwise the most common label in the last 8 frames, ignoring unlabelled ones.
 
 ```python
 def window_label(y4: np.ndarray, detected: np.ndarray) -> int | None:
+    # v2: `detected` here means "present or recently seen": present | (ctx[:, 0] < ctx_cap_s)
     if (y4 < 0).mean() > 0.30 or (~detected).mean() > 0.40:
         return None
     if (y4[-20:] == 1).sum() >= 5:
@@ -270,9 +351,10 @@ def window_label(y4: np.ndarray, detected: np.ndarray) -> int | None:
 
 - [ ] Read `index.csv`. Train and val use `qc_pass` clips only; test, staged\_test and OOPS use every clip (keep a `qc_pass` column so results can be cut both ways).
 - [ ] Per clip: load the .npz, take the 13 config keypoints, convert x and y to pixels with `width` and `height`, NaN where not detected.
+- [ ] Per clip: `present = detected`; `ctx = occlusion.last_seen_context(kp, present, wh, fps, ctx_cap_s)` over the **whole clip**, then slice per window (a window alone cannot know someone vanished 8 s ago).
 - [ ] Frame labels: `labels.segments_for(dataset, path)` → `clean_segments` → `frame_labels(segs, t_ms)` → `to4`.
 - [ ] Window ends: train and val every 8 frames, plus every 2 frames wherever a falling frame lies within 1 s of the window end; test, staged\_test and OOPS every 3 frames.
-- [ ] Apply `window_label`; save per Contract 3 with `np.savez_compressed` to `data\windows\{train,val,test,oops}.npz` (OOPS kept as its own file so it is never mixed into test).
+- [ ] Apply `window_label`; save per Contract 3 v2 (including `present` and `ctx`) with `np.savez_compressed` to `data\windows\{train,val,test,oops}.npz` (OOPS kept as its own file so it is never mixed into test).
 - [ ] Write `reports\windows_summary.csv`: counts by split × dataset × class. If falling is under 1% of train, lower the near-fall stride to 1.
 - [ ] Assertions that stop the script: no `clip_id` in two splits; no `(dataset, subject)` in both train and test (except `subject == -1` and the MCFD single-actor note); no window crosses a clip boundary; every `y` is 0–3.
 - [ ] Dry run on your GMDCSA24 skeletons before S7.
@@ -282,11 +364,17 @@ def window_label(y4: np.ndarray, detected: np.ndarray) -> int | None:
 
 Augment raw keypoints, then call `make_features`.
 
+**Simulated occlusion (occlusion handling part 3).** Add a `ClipBank` that loads every train clip's 13-keypoint pixel array and `present` once (about 50 MB). In `__getitem__`, with augmentation on, occlude the window with probability `aug_p_fall` if a falling or fallen frame lies within `lookback_frames` before its end, else `aug_p_other`: take the clip's last `lookback_frames` frames up to the window end, pick an onset (for falls, between fall start and window end; otherwise anywhere), call Dev A's `occlusion.simulate_occlusion` (mode `rise` or `box`, 50/50), recompute `last_seen_context` on that span, keep the last 30 frames. Keep the label. Never occlude val, test, staged\_test or OOPS.
+
+- [ ] **SYNC S16 (A → B)** – Dev A says `occlusion.py` is merged. Pull, run `pytest tests/test_occlusion.py`, read `reports/occlusion_realism.md`, wire `simulate_occlusion` into `dataset.py`. Tick when Dev A agrees the hook is right.
+- [ ] Check by eye: render 5 occluded training windows (skeleton on black) for falls and 5 for walking; the skeleton should sink and vanish for falls and vanish without dropping for walking.
+
 ```python
 class WindowDataset(torch.utils.data.Dataset):
     def __init__(self, npz_path, stats, augment=False, seed=0):
         d = np.load(npz_path)
         self.kp, self.wh, self.y = d["kp"], d["wh"], d["y"]
+        self.present, self.ctx = d["present"], d["ctx"]          # Contract 3 v2
         self.mu, self.sd, self.augment = stats["mu"], stats["sd"], augment
         self.rng = np.random.default_rng(seed)
 
@@ -294,10 +382,11 @@ class WindowDataset(torch.utils.data.Dataset):
         return len(self.y)
 
     def __getitem__(self, i):
-        kp = self.kp[i].copy()
+        kp, present, ctx = self.kp[i].copy(), self.present[i].copy(), self.ctx[i].copy()
         if self.augment:
+            kp, present, ctx = maybe_occlude(i, kp, present, ctx, self.rng)  # ClipBank + simulate_occlusion
             kp = augment_kp(kp, self.wh[i], self.rng)
-        x = (make_features(kp, self.wh[i]) - self.mu) / self.sd
+        x = (make_features(kp, self.wh[i], present, ctx) - self.mu) / self.sd
         return torch.from_numpy(x.astype(np.float32)), int(self.y[i])
 ```
 
@@ -310,6 +399,7 @@ class WindowDataset(torch.utils.data.Dataset):
 | Coordinate jitter | 1.0 | σ = 1% of torso length | Pose noise |
 | Joint dropout (NaN) | 0.05 per joint-frame | – | Furniture occlusion |
 | Whole-frame dropout | 0.03 per frame | – | Lost detection |
+| Simulated occlusion (`simulate_occlusion`, needs the `ClipBank`) | `aug_p_fall` near falls, `aug_p_other` elsewhere | `rise` or `box` | Falls behind furniture; people walking behind it |
 | Speed change (resample in time, anchored at last frame) | 0.3 | 0.8–1.2× | Slower, frailer movement |
 
 ### 5d. `tests/test_windows.py`
@@ -326,13 +416,13 @@ Training is cheap (minutes per run on CPU), so run every experiment with three s
 
 ```python
 class FallGRU(nn.Module):
-    def __init__(self, f_in=47, hidden=64, n_cls=4, layers=2, dropout=0.2):
+    def __init__(self, f_in=51, hidden=64, n_cls=4, layers=2, dropout=0.2):
         super().__init__()
         self.inp = nn.Sequential(nn.Linear(f_in, hidden), nn.ReLU(), nn.LayerNorm(hidden))
         self.gru = nn.GRU(hidden, hidden, num_layers=layers, batch_first=True, dropout=dropout)
         self.head = nn.Linear(hidden, n_cls)
 
-    def forward(self, x):                 # x: (B, 30, 47)
+    def forward(self, x):                 # x: (B, 30, 51)
         h, _ = self.gru(self.inp(x))
         return self.head(h[:, -1])        # logits from the last time step
 
@@ -341,7 +431,7 @@ class FallTCN(nn.Module):
     BatchNorm + ReLU + Dropout(0.1), then concat(mean over time, last step) -> Linear."""
 ```
 
-- [ ] `tests/test_model.py`: both models map (8, 30, 47) to (8, 4); a 50-step overfit on 64 windows drives loss near zero. Merge models.py, 06\_train.py and this test by pull request from branch b/models (M9) once one run trains.
+- [ ] `tests/test_model.py`: both models map (8, 30, 51) to (8, 4); a 50-step overfit on 64 windows drives loss near zero. Merge models.py, 06\_train.py and this test by pull request from branch b/models (M9) once one run trains.
 
 ### 6b. `scripts/06_train.py`
 
@@ -383,6 +473,7 @@ class FallTCN(nn.Module):
 | E4 | best of E2/E3 | core + OCCU | yes | Does occlusion data help? |
 | E5 | best of E2/E3 | core + OCCU + OF-Syn subset | yes | Does synthetic diversity help, especially older and heavier bodies? |
 | E6 | best config | all except CAUCAFall | yes | How much does accuracy drop on an unseen home (CAUCAFall test)? |
+| E7 | best config | same as the best of E4/E5 | yes + simulated occlusion | Does simulated occlusion help on hidden falls (OCCU val/test, staged hidden falls) without more false alerts elsewhere? |
 
 "Core" = GMDCSA24, CAUCAFall, Le2i, MCFD.
 
@@ -430,7 +521,8 @@ Rule: test, staged\_test and OOPS are not opened until the model is frozen at S1
 
 - [ ] `cv2.VideoCapture(0)` at 640×480; one `PoseExtractor` in VIDEO mode with timestamps from `time.monotonic()` in ms (strictly increasing).
 - [ ] Keep frames at 15 fps by time; push the 13-keypoint pixel coordinates into a 30-frame ring buffer.
-- [ ] Every 3rd frame: `make_features` → z-score with `feat_stats.npz` → model → `softmax(logits / T)` → the same `alerts_from_scores` logic with `on_floor_seconds_demo` (20 s).
+- [ ] Every frame: update `occlusion.LastSeenState` and Dev A's `DisappearanceTracker` (S17); keep `present` and `ctx` in the ring buffer alongside the keypoints.
+- [ ] Every 3rd frame: `make_features(kp, wh, present, ctx)` → z-score with `feat_stats.npz` → model → `softmax(logits / T)` → the same `alerts_from_scores` logic with `on_floor_seconds_demo` (20 s). A tracker CHECK is shown and printed like a model CHECK, with `"source": "tracker"`.
 - [ ] Display a skeleton on a black canvas (never the camera image), the four probabilities as bars, the current level (silent, CHECK, FALL) and an ON FLOOR timer.
 - [ ] On every alert print one JSON line: `{"room": "demo", "time": ..., "level": "CHECK", "score": 0.58, "source": "pose", "model": "<run>"}` – the interface the carer app will consume later.
 - [ ] Print processing fps once a second; it must stay at 10 or above. If not: switch to `pose_landmarker_lite.task`, or run pose on every 2nd frame. Merge 09\_live.py by pull request from branch b/live (M15) once it holds 10 fps, before S15.
@@ -448,6 +540,8 @@ Rule: test, staged\_test and OOPS are not opened until the model is frozen at S1
 | Epochs slow with OF-Syn | over 2 min per epoch | Train from precomputed `train_aug.npz` |
 | Windows DataLoader crashes | error on worker start | Script body under `if __name__ == "__main__":`; or `num_workers=0` |
 | Live demo under 10 fps | fps print | Lite pose model; pose every 2nd frame |
+| Model learns "vanished means fallen" | false FALLs when someone walks out of view on val | Raise `aug_p_other` so more normal activity is occluded; check the context features are in the input |
+| Simulated occlusion hurts accuracy on visible falls | E7 worse than its base on non-OCCU val | Lower `aug_p_fall`; keep E7 only if hidden-fall gains outweigh it, decided on val |
 
 ### Definition of done
 
