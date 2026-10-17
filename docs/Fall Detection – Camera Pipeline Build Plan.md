@@ -654,7 +654,7 @@ class FallTCN(nn.Module):
 | E6 | best config | all except CAUCAFall | yes | How much does accuracy drop on an unseen home (CAUCAFall test)? |
 | E7 | best config | same as the best of E4/E5 | yes + simulated occlusion | Does simulated occlusion help on hidden falls without more false alerts elsewhere? |
 
-"Core staged" = GMDCSA24, CAUCAFall, Le2i, MCFD. Pick the final model on val only; open the test split once, at the end. E8 (care-home subset: OF-Syn indoor and 18+, vs all data) is deferred until a model exists; its plan, the data cuts it decides and the metrics to recompute are in `reports/data_scope_review.md`. E7's results (with and without simulated occlusion) also go into the "E7 outcome" section of `reports/occlusion_realism.md`, so the simulation can be revisited later.
+"Core staged" = GMDCSA24, CAUCAFall, Le2i, MCFD. Pick the final model on val only; open the test split once, at the end. E7's results (with and without simulated occlusion) also go into the "E7 outcome" section of `reports/occlusion_realism.md`, so the simulation can be revisited later.
 
 ### Training time (CPU, measured per epoch on the first run, then updated here)
 

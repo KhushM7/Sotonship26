@@ -2,10 +2,6 @@
 
     python scripts/04_qc_skeletons.py                 # all datasets, plots, 10 samples
     python scripts/04_qc_skeletons.py --samples 0     # skip the sample videos
-    python scripts/04_qc_skeletons.py --clip of-syn:fall/fall_mi_062   # one clip
-
-Sample videos draw the skeleton (coloured by labelled class) over the source video
-where it is on this laptop (data/inventory.csv), else on black; --black forces black.
 
 Needs only the .npz files and the OmniFall label configs (no video), so it works on
 skeletons from either laptop. Writes data/skeletons/index.csv, reports/qc/*.png,
@@ -36,7 +32,6 @@ import numpy.typing as npt
 import pandas as pd
 
 from fallsense.config import DATA, load_config, skeleton_path
-from fallsense.io_video import iter_frames
 from fallsense.labels import clean_segments, frame_labels, load_labels, to4
 from fallsense.occlusion import HIPS, OCC, find_disappearances, stable_presence
 
@@ -82,15 +77,6 @@ BONES = [
     (23, 24), (23, 25), (25, 27), (24, 26), (26, 28), (27, 31), (28, 32),
     (0, 11), (0, 12),
 ]  # fmt: skip
-BAR = 30  # header/footer height in the sample videos, px
-# label -> (text, BGR colour) for the sample videos
-CLASS_STYLE = {
-    0: ("upright", (0, 200, 0)),
-    1: ("FALLING", (0, 0, 255)),
-    2: ("FALLEN", (0, 140, 255)),
-    3: ("controlled_low", (255, 200, 0)),
-}
-UNLABELLED_STYLE = ("unlabelled", (160, 160, 160))
 
 
 def load_kp(z: Any) -> tuple[npt.NDArray[np.float32], tuple[int, int]]:
@@ -248,53 +234,24 @@ def plot_by_class(full: pd.DataFrame) -> pd.DataFrame:
     return rate
 
 
-def source_videos() -> dict[tuple[str, str], str]:
-    """(dataset, path) -> video file, for the videos on this laptop."""
-    inv = DATA / "inventory.csv"
-    if not inv.exists():
-        return {}
-    df = pd.read_csv(inv, usecols=["dataset", "path", "file"])
-    return {(d, p): f for d, p, f in df.itertuples(index=False) if Path(f).exists()}
-
-
-def render_sample(dataset: str, path: str, out: Path, video: str | None) -> None:
-    """Sample MP4 with the skeleton in its labelled class colour, drawn over the
-    source video when `video` is given (to spot pose or label errors), else on
-    black (what the sensor sees). Header: dataset and clip; footer: time and
-    label, so you can check the label changes when the body does."""
+def render_sample(dataset: str, path: str, out: Path) -> None:
+    """Skeleton-on-black MP4: what the sensor sees."""
     z = np.load(skeleton_path(dataset, path))
-    n = len(z["detected"])
-    segs = load_labels(dataset).query("path == @path")
-    y4 = to4(frame_labels(clean_segments(segs, n / FPS), z["t_ms"]))
     w, h = int(z["width"]), int(z["height"])
     scale = 480 / max(w, h)
-    view = (round(w * scale), round(h * scale))
-    size = (view[0], view[1] + 2 * BAR)
-    title = f"{dataset}  {path}" + ("" if video else "  (no video here)")
-    # the same decoder and resampling as extraction, so frame i matches pose i
-    frames = (f for _, f in iter_frames(video, FPS)) if video else None
+    size = (round(w * scale), round(h * scale))
     out.parent.mkdir(parents=True, exist_ok=True)
     vw = cv2.VideoWriter(str(out), cv2.VideoWriter.fourcc(*"mp4v"), FPS, size)
-    for kp, det, t_ms, y in zip(z["kp"], z["detected"], z["t_ms"], y4):
+    for kp, det in zip(z["kp"], z["detected"]):
         img = np.zeros((size[1], size[0], 3), np.uint8)
-        frame = next(frames, None) if frames is not None else None
-        if frame is not None:
-            img[BAR : BAR + view[1]] = cv2.resize(frame, view) // 4 * 3  # dimmed
-        name, colour = CLASS_STYLE.get(int(y), UNLABELLED_STYLE)
         if det:
-            pts = np.c_[kp[:, 0] * size[0], kp[:, 1] * (size[1] - 2 * BAR) + BAR]
-            pts = pts.astype(int)
+            pts = np.c_[kp[:, 0] * size[0], kp[:, 1] * size[1]].astype(int)
             for a, b in BONES:
-                cv2.line(img, tuple(pts[a]), tuple(pts[b]), colour, 2)
+                cv2.line(img, tuple(pts[a]), tuple(pts[b]), (0, 255, 0), 2)
             for p in pts[KEYPOINTS]:
                 cv2.circle(img, tuple(p), 3, (255, 255, 255), -1)
         else:
-            cv2.putText(img, "no pose", (10, BAR + 30), 0, 0.8, (0, 0, 255), 2)
-        cv2.rectangle(img, (0, 0), (size[0], BAR), (40, 40, 40), -1)
-        cv2.putText(img, title, (6, 20), 0, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
-        cv2.rectangle(img, (0, size[1] - BAR), (size[0], size[1]), (40, 40, 40), -1)
-        foot = f"{t_ms / 1000:6.2f} s   {name}"
-        cv2.putText(img, foot, (6, size[1] - 9), 0, 0.6, colour, 2, cv2.LINE_AA)
+            cv2.putText(img, "no pose", (10, 30), 0, 0.8, (0, 0, 255), 2)
         vw.write(img)
     vw.release()
 
@@ -304,22 +261,8 @@ def main() -> None:
     ap.add_argument("--datasets", nargs="+", default=DATASETS)
     ap.add_argument("--out", type=Path, default=DATA / "skeletons" / "index.csv")
     ap.add_argument("--samples", type=int, default=10)
-    ap.add_argument(
-        "--black", action="store_true", help="samples on black, not the video"
-    )
-    ap.add_argument(
-        "--clip",
-        nargs="+",
-        metavar="DATASET:PATH",
-        help="only render these clips (e.g. of-syn:fall/fall_mi_062), no QC",
-    )
     ap.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) - 2))
     args = ap.parse_args()
-
-    if args.clip:
-        pairs = [tuple(c.split(":", 1)) for c in args.clip]
-        render_samples(pd.DataFrame(pairs, columns=["dataset", "path"]), args.black)
-        return
 
     todo = clips(args.datasets)
     print(f"QC on {len(todo)} clips with {args.workers} workers")
@@ -358,17 +301,11 @@ def main() -> None:
         seed = CFG["seed"]
         first = index.groupby("dataset").sample(1, random_state=seed)
         rest = index.drop(first.index).sample(frac=1, random_state=seed)
-        render_samples(pd.concat([first, rest]).head(args.samples), args.black)
-
-
-def render_samples(pick: pd.DataFrame, black: bool) -> None:
-    videos = {} if black else source_videos()
-    for r in pick.itertuples():
-        name = f"{r.dataset}_{str(r.path).replace('/', '_')}.mp4"
-        video = videos.get((r.dataset, r.path))
-        render_sample(r.dataset, r.path, QC_DIR / "samples" / name, video)
-    on_video = sum((r.dataset, r.path) in videos for r in pick.itertuples())
-    print(f"{len(pick)} sample videos ({on_video} on video) in {QC_DIR / 'samples'}")
+        pick = pd.concat([first, rest]).head(args.samples)
+        for r in pick.itertuples():
+            name = f"{r.dataset}_{str(r.path).replace('/', '_')}.mp4"
+            render_sample(r.dataset, r.path, QC_DIR / "samples" / name)
+        print(f"{len(pick)} sample videos in {QC_DIR / 'samples'}")
 
 
 if __name__ == "__main__":
