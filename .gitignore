@@ -1,0 +1,11 @@
+data/
+*.mp4
+*.avi
+*.npz
+.venv/
+models/pose/*.task
+__pycache__/
+.env.ps1
+*.egg-info/
+.idea/
+

@@ -1,0 +1,14 @@
+omnifall[video]>=0.2
+requests
+mediapipe>=0.10.14
+opencv-python>=4.9
+numpy
+pandas
+pyarrow
+scikit-learn
+matplotlib
+pyyaml
+typer
+tqdm
+pytest
+ruff
