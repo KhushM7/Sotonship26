@@ -13,3 +13,9 @@ reports/extract_log.csv
 
 reports/scores/**/*.parquet
 reports/alerts/**/*.parquet
+
+# fallsense server (frontend)
+server_data/
+configs/server.local.yaml
+frontend/node_modules/
+frontend/dist/

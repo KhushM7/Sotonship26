@@ -1,0 +1,89 @@
+@import "tailwindcss";
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
+
+/*
+  One quiet palette. Neutrals carry everything; colour appears only when a
+  person needs to act: red = go now, amber = please check. Nothing else is
+  coloured, so a coloured pixel on the wall always means something.
+*/
+@theme {
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, "SF Mono", monospace;
+
+  --color-ink-950: #0e0f11;
+  --color-ink-900: #141518;
+  --color-ink-850: #191a1e;
+  --color-ink-800: #212328;
+  --color-ink-700: #2c2e34;
+  --color-ink-500: #5d6068;
+  --color-ink-400: #8b8e96;
+  --color-ink-300: #a9abb2;
+  --color-ink-200: #cdced3;
+  --color-ink-100: #ececee;
+
+  --color-alarm: #e0575c;
+  --color-alarm-deep: #b8393f;
+  --color-caution: #d6a243;
+
+  --animate-beat: beat 1.6s ease-in-out infinite;
+  --animate-rise: rise 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+
+  @keyframes beat {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+  }
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  min-height: 100dvh;
+}
+
+body {
+  background: var(--color-ink-950);
+  color: var(--color-ink-100);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "ss01", "cv11";
+}
+
+/* camera offline: diagonal hatch, no colour */
+.hatch {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent 0 10px,
+    rgb(255 255 255 / 0.035) 10px 20px
+  );
+}
+
+/* the wall switches layout with a cross-fade where the browser supports it */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 260ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+button {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: default;
+}

@@ -1,0 +1,31 @@
+# fallsense server: monitoring wall, carer alerts and the demo (docs/Frontend Plan).
+# Local overrides (ntfy topics, public URL, PIN) go in configs/server.local.yaml,
+# which is gitignored and merged over this file and carers.yaml.
+schema_version: 1
+site:
+  name: Larkfield House
+  ward: Willow Ward
+port: 8000
+# where the phones reach the laptop: "auto" = http://<this laptop's LAN IP>:<port>,
+# or a tunnel URL such as https://xyz.trycloudflare.com
+public_url: auto
+# requests from this laptop act as "Nurse station" without a PIN; set false when a
+# tunnel is running, because tunnel traffic also arrives from localhost
+trust_localhost: true
+shift_pin: "2468"
+
+# the backend run whose stored scores and thresholds drive the replay rooms;
+# a better model later is a change here only
+model_run: e5_gru_s1
+scores_split: val
+
+escalation:
+  ack_s: {FALL: 30, ON FLOOR: 30, CHECK: 90, OFFLINE: 60}
+  repeat_s: 30          # re-notify the next tier this often until someone acknowledges
+  attend_s: 180         # acknowledged but not "with them" -> escalate
+  carer_in_room_s: 900  # "Carer in room" mute switches itself off after this
+  offline_after_s: 5    # no frames for this long -> camera offline incident
+  replay_s: 10          # skeleton seconds kept for the incident replay
+
+ntfy:
+  server: https://ntfy.sh
