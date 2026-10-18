@@ -1,6 +1,6 @@
 # Data scope review – revisit after the first trained model (E8)
 
-**Status (17 Oct): deferred.** We train on all QC-passing data first and decide on cuts
+**Status (18 Oct): closed without changes** – see "E8 outcome" at the end. Original note (17 Oct): deferred. We train on all QC-passing data first and decide on cuts
 with a model in hand. Nothing below has been applied to the data yet. Revisit once E1–E5
 have val results, before the final model is chosen.
 
@@ -72,5 +72,7 @@ Rerun on the then-current data and compare with the table above:
 
 ## E8 outcome
 
-*To be filled in after E8: run names, in-domain and OOPS results for both runs, and the
-decision on each cut above.*
+**Not run (18 Oct 2026).** The care-home-subset experiment was skipped for time; no data cut above
+was made, and the frozen model (`e9_ens_gru`) trains on all data. The experiment id E8 was
+reused for a training-settings experiment (README section 11). The cuts and metrics above remain
+the starting point if the data scope is revisited.

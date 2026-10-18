@@ -1,5 +1,7 @@
 # Training Run Plan – who trains what, where
 
+> **Final status (18 Oct 2026).** Done: data, QC, windows, training E1–E9, calibration, evaluation on val, test and OOPS, live demo, `DATA_CARD.md`. Frozen model: `models/e9_ens_gru` (test: 82.5% of falls caught at 35.7 false FALL/h). Skipped for time: the disappearance tracker, the staged recording session (no `staged_test`) and the care-home-subset experiment. Results: README section 9.
+
 Prep for after Dev B's model code is merged (M9 `models.py` / `06_train.py`, M10 `calibrate.py`) and S7/S11 are done. It decides which laptop runs which training jobs, gives the run queue with commands, and fixes the rules that keep results comparable. Fill in the measured numbers as they arrive; nothing here changes the experiments themselves (see the master plan, Phase 5–6).
 
 ## 1. The two machines
@@ -39,7 +41,7 @@ Record per laptop: seconds per epoch (printed after epoch 1, also in `train_log.
 
 | Laptop | Train windows | s/epoch (plain) | s/epoch (`--occlude`) | Peak RAM | Swapping? |
 | --- | --- | --- | --- | --- | --- |
-| A | | | | | |
+| A | 21,331 (core + OCCU); 53,429 (core + OCCU + OF-Syn) | core + OCCU: 4.3 (TCN, 2 runs at once). Core + OCCU + OF-Syn: 13–17 solo, 17–26 with 5 runs at once (median 17 GRU, 19 TCN) | 15–20 with little contention, up to 44 with 3 runs at once (median 20; ≈ 1.2× plain) | ≈ 3–4 GB per run (free RAM 43 GB idle → 32 GB with 3 E7 runs); 64 GB total | No |
 | B | | | | | |
 
 **Decision rule**
@@ -122,11 +124,11 @@ A run folder is a few MB: `model.pt`, `feat_stats.npz`, `config.yaml`, `train_lo
 
 ## 8. Checklist
 
-- [ ] Dev B: `--threads` flag in `06_train.py` (before Mode 3)
-- [ ] Both: Step 0 benchmark filled in; mode chosen
-- [ ] Both: `windows_summary.csv` identical
-- [ ] Wave 1 (E1–E3) done; val reports written; best of E2/E3 chosen
-- [ ] Wave 2 (E4–E5) done; best of E4/E5 chosen
-- [ ] Wave 3 (E6–E7) done; E7 outcome written into `reports/occlusion_realism.md`
-- [ ] Measured times copied into the master plan's "Training time" table
-- [ ] Final model calibrated, frozen and evaluated once on test, staged_test and OOPS
+- [x] Dev B: `--threads` flag in `06_train.py` (before Mode 3) ✅ *in `06_train.py`; Laptop A ran E4–E7 with `--threads 2/1/3`*
+- [ ] Both: Step 0 benchmark filled in; mode chosen ⏳ *row A filled in from the E4–E7 runs on 17–18 Oct; row B is Dev B's. In practice: E1–E4 on B, the rest of E4 and E5–E7 on A*
+- [x] Both: `windows_summary.csv` identical ✅ *Laptop A rebuild on `760f123` matches the committed file; val 12,454 windows*
+- [x] Wave 1 (E1–E3) done; val reports written; best of E2/E3 chosen ✅ *Dev B, 3 seeds each; E2 GRU and E3 TCN tied, so both models went into E4/E5*
+- [x] Wave 2 (E4–E5) done; best of E4/E5 chosen ✅ *E5 GRU: 44.0 (37.3–50.6) false FALL/h at ≥ 75% sens. vs E4 GRU 148.3; E5 TCN tied with E5 GRU, which won the tie-break on elderly sens. (90.7% vs 82.7%). Numbers in `reports/eval/summary_val.md`*
+- [x] Wave 3 (E6–E7) done; E7 outcome written into `reports/occlusion_realism.md` ✅ *E7 dropped (no clear gain on OCCU val); E6 showed no drop on CAUCAFall val (4/4 falls every seed; val too small to show one)*
+- [x] Measured times copied into the master plan's "Training time" table ✅ *Laptop A, 17–18 Oct*
+- [x] Final model calibrated, frozen and evaluated once on test, staged_test and OOPS ✅ *`e9_ens_gru` (18 Oct): test 82.5% at 35.7 false FALL/h, OOPS 56.0%; no staged_test*

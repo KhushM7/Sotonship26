@@ -7,8 +7,7 @@
 Reads reports/scores/<model>/<split>.parquet (Contract 4), index.csv, OmniFall
 labels and the run's thresholds.yaml (models/<model>/ or reports/scores/<model>/;
 --t-high/--t-low override). Rows: the run with one threshold, the run with the
-CHECK band, the rule baseline (if its scores exist for the split), and each of
-those + tracker once reports/alerts/tracker/<split>.parquet (Contract 5) exists.
+CHECK band, and the rule baseline (if its scores exist for the split).
 Writes reports/eval/eval_<model>_<split>.json, .md and _coverage.png (--out-dir).
 """
 
@@ -260,7 +259,7 @@ def write_markdown(report: dict[str, Any], path: Path) -> None:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--model", required=True, help="score folder in reports/scores")
-    ap.add_argument("--split", required=True, help="val, test, oops or staged_test")
+    ap.add_argument("--split", required=True, help="val, test or oops")
     ap.add_argument("--index", type=Path, default=DATA / "skeletons" / "index.csv")
     ap.add_argument("--windows", type=Path, help="Contract 3 file for window F1")
     ap.add_argument("--t-high", type=float)
@@ -293,14 +292,6 @@ def main() -> None:
             "baseline", argparse.Namespace(t_high=None, t_low=None)
         )
         systems["rule baseline (E0)"] = alerts_from_scores(base, base_th)
-    tracker = REPORTS / "alerts" / "tracker" / f"{args.split}.parquet"
-    if tracker.exists():
-        tr = pd.read_parquet(tracker)
-        tr = tr[tr["clip_id"].isin(ids)]
-        for name in list(systems):
-            systems[f"{name} + tracker"] = pd.concat(
-                [systems[name], tr[["clip_id", "t_s", "level"]]], ignore_index=True
-            )
 
     report: dict[str, Any] = {
         "model": args.model,
