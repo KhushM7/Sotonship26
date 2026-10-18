@@ -60,6 +60,7 @@ COLOURS = {  # BGR
     calibrate.ON_FLOOR: (200, 60, 200),
 }
 BANNER_S = 6.0  # an alert stays on screen this long
+WIN_TITLE = "FallSense (skeleton only)"
 WARMUP_S = 3.0  # model loading: no fps warning before this
 LOWER_BODY = [7, 8, 9, 10, 11, 12]  # hips, knees, ankles in the 13 keypoints
 
@@ -130,7 +131,10 @@ def webcam_frames(
                 # DirectShow drops the first reads after a resolution change
                 misses += 1
                 if misses > 100:
-                    raise SystemExit("camera stopped returning frames")
+                    raise SystemExit(
+                        "camera stopped returning frames (is another program, or "
+                        "another copy of 09_live.py, using it?)"
+                    )
                 time.sleep(0.02)
                 continue
             misses = 0
@@ -144,21 +148,28 @@ def webcam_frames(
 
 
 def list_cameras(max_index: int = 4) -> None:
-    """Print each camera index that returns frames, with its size and frame rate."""
+    """Print each camera index that returns frames: size, frame rate, brightness and
+    whether a person is detected (pick the one that sees the room)."""
     for idx in range(max_index):
         cap = cv2.VideoCapture(idx)
         if not cap.isOpened():
             continue
         for _ in range(5):
             cap.read()
-        t0, n, shape = time.monotonic(), 0, None
-        while time.monotonic() - t0 < 2:
-            ok, frame = cap.read()
-            if ok:
-                n, shape = n + 1, frame.shape
+        t0, n, shape, seen, last = time.monotonic(), 0, None, 0, None
+        with PoseExtractor(POSE_MODELS["lite"]) as pose:
+            while time.monotonic() - t0 < 2:
+                ok, frame = cap.read()
+                if ok:
+                    n, shape, last = n + 1, frame.shape, frame
+                    seen += pose(frame, int(1000 * (time.monotonic() - t0)) + n)[2]
         cap.release()
-        if shape:
-            print(f"camera {idx}: {shape[1]}x{shape[0]}, {n / 2:.0f} fps")
+        if shape and last is not None:
+            print(
+                f"camera {idx}: {shape[1]}x{shape[0]}, {n / 2:.0f} fps, "
+                f"brightness {last.mean():.0f}/255, person in "
+                f"{seen / max(n, 1):.0%} of frames"
+            )
 
 
 def draw(
@@ -185,7 +196,10 @@ def draw(
     text = level if not banner else f"{level}  ({banner[1]:.2f})"
     cv2.putText(img, text, (12, 31), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 0), 2)
     lower = np.nan_to_num(kp13[LOWER_BODY, 2])
-    if lower.mean() < 0.5:
+    if not np.isfinite(kp13[:, :2]).any():
+        cv2.putText(img, "no person detected - check the camera (--list-cameras)",
+                    (12, 72), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 190, 255), 2)  # fmt: skip
+    elif lower.mean() < 0.5:
         # the model was trained on full-body views; a seated close-up reads as ambiguous
         cv2.putText(img, "full body not in view - step back", (12, 72),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 190, 255), 2)  # fmt: skip
@@ -272,50 +286,58 @@ def main() -> int:
         min_presence=pose_cfg["min_presence"],
         min_track=pose_cfg["min_track"],
     ) as pose:
-        for t_ms, frame in frames:
-            if first and not args.video:
-                # the camera may ignore the requested size
-                h0, w0 = frame.shape[:2]
-                if (w0, h0) != wh:
-                    wh = (w0, h0)
-                    pipe = LivePipeline(run_dir, th, on_floor, wh)
-                first = False
-            t_ms = max(t_ms, last_t_ms + 1)  # VIDEO mode needs strictly increasing
-            last_t_ms = t_ms
-            kp33, _, det = pose(frame, t_ms)
-            kp13, probs, alert = pipe.step(kp33, det)
-            t_s = pipe.i / FPS
-            if args.record:
-                rec_kp.append(kp33)
-                rec_det.append(det)
-                rec_t.append(t_ms)
-                if probs is not None:
-                    rec_scores.append((round(t_s, 3), *np.round(probs, 4)))
-            if alert is not None:
-                banner, banner_until = alert, t_s + BANNER_S
-                rec_alerts.append((round(t_s, 3), alert[0], round(alert[1], 4)))
-                print(f"{t_s:8.2f} s  {alert[0]:8s} score {alert[1]:.2f}", flush=True)
-            if args.seconds and time.monotonic() - started >= args.seconds:
-                break
-            if banner and t_s > banner_until:
-                banner = None
-
-            n_tick += 1
-            now = time.monotonic()
-            if now - tick >= 1.0:
-                fps, tick, n_tick = n_tick / (now - tick), now, 0
-                if not args.video and fps < 10 and now - started > WARMUP_S:
-                    print(f"WARNING: {fps:.1f} fps (< 10); try --pose lite", flush=True)
-            if not args.no_display:
-                cv2.imshow(
-                    "FallSense (skeleton only)", draw(kp13, wh, probs, banner, fps)
-                )
-                key = cv2.waitKey(1) & 0xFF
-                if key in (ord("q"), 27):
+        try:
+            for t_ms, frame in frames:
+                if first and not args.video:
+                    # the camera may ignore the requested size
+                    h0, w0 = frame.shape[:2]
+                    if (w0, h0) != wh:
+                        wh = (w0, h0)
+                        pipe = LivePipeline(run_dir, th, on_floor, wh)
+                    first = False
+                t_ms = max(t_ms, last_t_ms + 1)  # VIDEO mode needs strictly increasing
+                last_t_ms = t_ms
+                kp33, _, det = pose(frame, t_ms)
+                kp13, probs, alert = pipe.step(kp33, det)
+                t_s = pipe.i / FPS
+                if args.record:
+                    rec_kp.append(kp33)
+                    rec_det.append(det)
+                    rec_t.append(t_ms)
+                    if probs is not None:
+                        rec_scores.append((round(t_s, 3), *np.round(probs, 4)))
+                if alert is not None:
+                    banner, banner_until = alert, t_s + BANNER_S
+                    rec_alerts.append((round(t_s, 3), alert[0], round(alert[1], 4)))
+                    print(
+                        f"{t_s:8.2f} s  {alert[0]:8s} score {alert[1]:.2f}", flush=True
+                    )
+                if args.seconds and time.monotonic() - started >= args.seconds:
                     break
-                if key == ord("r"):
-                    pipe.reset()
+                if banner and t_s > banner_until:
                     banner = None
+
+                n_tick += 1
+                now = time.monotonic()
+                if now - tick >= 1.0:
+                    fps, tick, n_tick = n_tick / (now - tick), now, 0
+                    if not args.video and fps < 10 and now - started > WARMUP_S:
+                        print(
+                            f"WARNING: {fps:.1f} fps (< 10); try --pose lite",
+                            flush=True,
+                        )
+                if not args.no_display:
+                    cv2.imshow(WIN_TITLE, draw(kp13, wh, probs, banner, fps))
+                    key = cv2.waitKey(1) & 0xFF
+                    if key in (ord("q"), 27):
+                        break
+                    if cv2.getWindowProperty(WIN_TITLE, cv2.WND_PROP_VISIBLE) < 1:
+                        break  # window closed with its X button
+                    if key == ord("r"):
+                        pipe.reset()
+                        banner = None
+        except KeyboardInterrupt:
+            print("stopped (Ctrl+C)")
     cv2.destroyAllWindows()
 
     if args.record:
