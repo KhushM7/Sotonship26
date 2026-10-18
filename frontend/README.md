@@ -42,9 +42,22 @@ For front-end work with hot reload: run the server, then `cd frontend; npm run d
 
 3. Restart the server; "Send me a test alert" on the phone page checks it.
 
-Without topics everything still runs and pushes are logged as a dry run. The notification's
-"I'm going" button posts back to the laptop, so the phone must reach it (same hotspot,
-or set `public_url` to a tunnel and `trust_localhost: false`).
+Without topics everything still runs and pushes are logged as a dry run.
+
+## Phones on any network (Cloudflare tunnel)
+
+```powershell
+winget install --id Cloudflare.cloudflared --exact   # once
+.venv\Scripts\python.exe scripts\11_serve.py --tunnel
+```
+
+A few seconds after start the log, and the wall's Activity list, show
+`https://<words>.trycloudflare.com/phone`. Phones open that from mobile data or any
+Wi-Fi; the laptop only needs internet. The address is new on every start and goes into
+every notification automatically. Through the tunnel nothing is trusted: phones sign
+in with the PIN, every read and action carries the carer's token, wrong PINs are
+limited to 5 per 10 minutes, and presenter controls only work on the laptop itself.
+Without `--tunnel`, phones must be on the laptop's network (`public_url: auto`).
 
 ## Configs
 

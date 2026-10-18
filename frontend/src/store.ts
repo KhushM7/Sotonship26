@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { identity } from "./api";
 import type {
   FrameMsg,
   Hello,
@@ -43,6 +44,8 @@ interface Store {
   postureSince: Record<string, number>;
   /** bumped on every alert so the wall can react (sound, spotlight) */
   alertTick: number;
+  /** the server refused this device's sign-in (wrong or old token) */
+  unauthorized: boolean;
 }
 
 export const useStore = create<Store>(() => ({
@@ -55,6 +58,7 @@ export const useStore = create<Store>(() => ({
   scores: {},
   postureSince: {},
   alertTick: 0,
+  unauthorized: false,
 }));
 
 export const serverNow = () => Date.now() / 1000 + useStore.getState().offset;
@@ -133,23 +137,34 @@ export function connect(frames = "all") {
   wanted = frames;
   if (socket) return;
   const proto = location.protocol === "https:" ? "wss" : "ws";
-  let delay = 500;
   const open = () => {
-    const ws = new WebSocket(`${proto}://${location.host}/ws?frames=${encodeURIComponent(wanted)}`);
+    // phones and the tunnel must be signed in; the laptop needs nothing
+    const q = new URLSearchParams({ frames: wanted, ...(identity() ?? {}) });
+    const ws = new WebSocket(`${proto}://${location.host}/ws?${q}`);
     socket = ws;
     ws.onopen = () => {
       delay = 500;
       ws.send(JSON.stringify({ type: "subscribe", frames: wanted }));
-      useStore.setState({ connected: true });
+      useStore.setState({ connected: true, unauthorized: false });
     };
     ws.onmessage = (e) => handle(JSON.parse(e.data) as ServerMsg);
-    ws.onclose = () => {
-      useStore.setState({ connected: false });
-      setTimeout(open, delay);
+    ws.onclose = (e) => {
+      useStore.setState({ connected: false, ...(e.code === 4401 ? { unauthorized: true } : {}) });
+      retry = setTimeout(open, delay);
       delay = Math.min(delay * 2, 5000);
     };
   };
   open();
+}
+
+let delay = 500;
+let retry: ReturnType<typeof setTimeout> | undefined;
+
+/** Reconnect now, e.g. after signing in, instead of waiting for the next retry. */
+export function reconnect() {
+  clearTimeout(retry);
+  delay = 0;
+  if (socket && socket.readyState <= WebSocket.OPEN) socket.close();
 }
 
 /** Change which rooms' skeleton frames this page receives. */

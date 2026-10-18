@@ -52,6 +52,7 @@ class Settings:
     raw: dict[str, Any]
     carers: list[Carer]
     rooms: list[dict[str, Any]]
+    tunnel_url: str | None = None  # set while a Cloudflare tunnel is running
 
     @property
     def escalation(self) -> dict[str, Any]:
@@ -61,6 +62,9 @@ class Settings:
         return next((c for c in self.carers if c.name == name), None)
 
     def public_url(self) -> str:
+        """Where phones reach this laptop: the tunnel if running, else per public_url."""
+        if self.tunnel_url:
+            return self.tunnel_url
         url = str(self.raw.get("public_url", "auto"))
         if url != "auto":
             return url.rstrip("/")

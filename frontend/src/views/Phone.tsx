@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { adoptLinkIdentity, api, identity, setIdentity, type Identity } from "../api";
 import type { Incident } from "../contracts";
 import { clock, levelText, incidentReason, STATE_LABEL, unanswered, urgent } from "../format";
-import { activeIncidents, connect, subscribe, useStore } from "../store";
+import { activeIncidents, connect, reconnect, subscribe, useStore } from "../store";
 import { Button, Label, LevelMark, useNow } from "../ui/bits";
 import { IncidentView } from "../ui/IncidentView";
 
@@ -16,6 +16,18 @@ export function Phone({ path }: { path: string }) {
   const incident = useStore((s) => (incidentId ? s.incidents[incidentId] : undefined));
   const acked = useRef(false);
   const [ackError, setAckError] = useState<string | null>(null);
+  const unauthorized = useStore((s) => s.unauthorized);
+
+  const signIn = (id: Identity | null) => {
+    useStore.setState({ unauthorized: false });
+    setIdentity(id);
+    setMe(id);
+    if (id) reconnect();
+  };
+  // the server no longer accepts this phone's sign-in (e.g. the shift was reset)
+  useEffect(() => {
+    if (unauthorized && me) signIn(null);
+  }, [unauthorized, me]);
 
   useEffect(() => connect("none"), []);
   // skeleton frames only for the room this carer is looking at
@@ -29,10 +41,10 @@ export function Phone({ path }: { path: string }) {
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col px-4 pb-10 pt-[max(16px,env(safe-area-inset-top))]">
-      {!hello ? (
+      {!me ? (
+        <SignIn onDone={signIn} />
+      ) : !hello ? (
         <div className="grid flex-1 place-items-center text-sm text-ink-400">Connecting</div>
-      ) : !me ? (
-        <SignIn onDone={setMe} />
       ) : incidentId ? (
         incident ? (
           <>
@@ -46,24 +58,23 @@ export function Phone({ path }: { path: string }) {
           <p className="mt-10 text-ink-400">This incident is no longer on the system.</p>
         )
       ) : (
-        <Shift
-          me={me}
-          onSignOut={() => {
-            setIdentity(null);
-            setMe(null);
-          }}
-        />
+        <Shift me={me} onSignOut={() => signIn(null)} />
       )}
     </div>
   );
 }
 
 function SignIn({ onDone }: { onDone: (id: Identity) => void }) {
-  const carers = useStore((s) => s.hello?.carers ?? []);
-  const site = useStore((s) => s.hello?.site);
+  const [info, setInfo] = useState<Awaited<ReturnType<typeof api.publicInfo>> | null>(null);
+  const carers = info?.carers ?? [];
+  const site = info?.site;
   const [name, setName] = useState<string | null>(null);
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    api.publicInfo().then(setInfo).catch(() => setError("Cannot reach the server"));
+  }, []);
 
   const press = async (d: string) => {
     const next = (pin + d).slice(0, 4);
@@ -71,11 +82,10 @@ function SignIn({ onDone }: { onDone: (id: Identity) => void }) {
     setError(null);
     if (next.length === 4 && name) {
       try {
-        const id = await api.login(name, next);
-        setIdentity(id);
-        onDone(id);
-      } catch {
-        setError("That PIN is not right");
+        onDone(await api.login(name, next));
+      } catch (e) {
+        const msg = (e as Error).message;
+        setError(msg.includes("too many") ? "Too many wrong PINs. Wait 10 minutes." : "That PIN is not right");
         setPin("");
       }
     }

@@ -68,8 +68,16 @@ export const api = {
     post(`/api/rooms/${room}/carer_in_room`, { on }),
   testPush: (carer: string) =>
     post<{ results: [string, string][] }>(`/api/carers/${encodeURIComponent(carer)}/test`),
+  /** Site and carer names for the sign-in screen; needs no sign-in. */
+  publicInfo: async () => {
+    const r = await fetch("/api/public");
+    return (await r.json()) as { site: { name: string; ward: string }; carers: { name: string; role: string }[] };
+  },
   replay: async (id: string) => {
-    const r = await fetch(`/api/incidents/${id}/replay`);
+    const me = identity();
+    const r = await fetch(`/api/incidents/${id}/replay`, {
+      headers: me ? { "X-Carer": me.carer, "X-Token": me.token } : {},
+    });
     return (await r.json()) as {
       fps: number;
       frames: { t: number; kp: ([number, number, number] | null)[]; present: boolean }[];

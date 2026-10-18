@@ -2,6 +2,10 @@
 
 REST (Contract 7) for carer actions, one WebSocket (Contract 6) for everything
 live. No endpoint returns camera images: rooms only ever hold skeletons.
+
+Access: this laptop (the nurse station) is trusted. Anyone else, on the hotspot or
+through the Cloudflare tunnel, signs in with the shift PIN and then sends their
+carer name and link token with every request, including reads and the WebSocket.
 """
 
 import asyncio
@@ -10,6 +14,8 @@ import csv
 import io
 import json
 import logging
+import time
+from collections import defaultdict, deque
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from pathlib import Path
@@ -19,6 +25,7 @@ from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconn
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from starlette.requests import HTTPConnection
 
 from fallsense_server.clips import BONES, FPS, load_thresholds, on_floor_seconds
 from fallsense_server.hub import Client, Hub
@@ -26,10 +33,14 @@ from fallsense_server.incidents import Incident, IncidentService, Push, Store
 from fallsense_server.notifier import Notifier, Tokens
 from fallsense_server.rooms import ReplayRoom
 from fallsense_server.settings import FRONTEND_DIST, STATE_DIR, Settings, load_settings
+from fallsense_server.tunnel import Tunnel, find_cloudflared
 
 log = logging.getLogger("fallsense.server")
 SCHEMA_VERSION = 1
 LOCAL_HOSTS = {"127.0.0.1", "::1", "localhost", "testclient"}
+# cloudflared forwards from localhost but adds these, so tunnel traffic is not local
+FORWARDED = ("cf-connecting-ip", "cf-ray", "x-forwarded-for")
+LOGIN_TRIES, LOGIN_WINDOW_S = 5, 600  # wrong PINs allowed per address per window
 
 
 class Who(BaseModel):
@@ -72,6 +83,8 @@ class Server:
             for r in settings.rooms
         }
         self.tasks: list[asyncio.Task[None]] = []
+        self.tunnel: Tunnel | None = None
+        self.failed_logins: defaultdict[str, deque[float]] = defaultdict(deque)
 
     # ------------------------------------------------------------ room input
 
@@ -135,11 +148,44 @@ class Server:
         for room in self.rooms.values():
             self.tasks.append(asyncio.create_task(room.run()))
         self.tasks.append(asyncio.create_task(self._ticker()))
+        if self.settings.raw.get("tunnel"):
+            self._start_tunnel()
 
     async def stop(self) -> None:
         for t in self.tasks:
             t.cancel()
+        if self.tunnel is not None:
+            self.tunnel.stop()
         await self.notifier.close()
+
+    def _start_tunnel(self) -> None:
+        exe = find_cloudflared(self.settings.raw.get("cloudflared"))
+        if exe is None:
+            log.warning("tunnel: true but cloudflared is not installed; using the LAN")
+            return
+        loop = asyncio.get_running_loop()
+
+        def ready(url: str) -> None:
+            self.settings.tunnel_url = url
+            self.service._event(
+                "info", "", f"Phones can connect from any network: {url}/phone"
+            )
+            self.flush()
+
+        def gone() -> None:
+            self.settings.tunnel_url = None
+            self.service._event(
+                "info", "", "Tunnel stopped: phones need the laptop's network"
+            )
+            self.flush()
+
+        self.tunnel = Tunnel(
+            exe,
+            int(self.settings.raw["port"]),
+            on_url=lambda u: loop.call_soon_threadsafe(ready, u),
+            on_exit=lambda: loop.call_soon_threadsafe(gone),
+        )
+        self.tunnel.start()
 
     async def _ticker(self) -> None:
         offline_after = float(self.settings.escalation["offline_after_s"])
@@ -204,6 +250,24 @@ class Server:
 
     # ------------------------------------------------------------ auth
 
+    def can_view(self, conn: HTTPConnection) -> bool:
+        """Reads: this laptop, or a signed-in carer (headers, or query on the WebSocket)."""
+        if self.is_local(conn):
+            return True
+        carer = conn.headers.get("x-carer") or conn.query_params.get("carer") or ""
+        token = conn.headers.get("x-token") or conn.query_params.get("token") or ""
+        return bool(self.settings.carer(carer)) and self.tokens.check(carer, token)
+
+    def viewer(self, conn: HTTPConnection) -> None:
+        if not self.can_view(conn):
+            raise HTTPException(401, "sign in on the phone page first")
+
+    def login_allowed(self, conn: HTTPConnection) -> bool:
+        tries = self.failed_logins[client_address(conn)]
+        while tries and tries[0] < time.time() - LOGIN_WINDOW_S:
+            tries.popleft()
+        return len(tries) < LOGIN_TRIES
+
     def actor(self, request: Request, who: Who) -> str:
         """The carer acting: a valid link token, or this laptop (the nurse station)."""
         known = who.carer and self.settings.carer(who.carer)
@@ -214,8 +278,17 @@ class Server:
         raise HTTPException(401, "sign in on the phone page first")
 
     @staticmethod
-    def is_local(request: Request) -> bool:
-        return request.client is not None and request.client.host in LOCAL_HOSTS
+    def is_local(conn: HTTPConnection) -> bool:
+        """This laptop itself, and not a request relayed by the tunnel."""
+        if conn.client is None or conn.client.host not in LOCAL_HOSTS:
+            return False
+        return not any(h in conn.headers for h in FORWARDED)
+
+
+def client_address(conn: HTTPConnection) -> str:
+    return conn.headers.get("cf-connecting-ip") or (
+        conn.client.host if conn.client else "?"
+    )
 
 
 def create_app(
@@ -245,21 +318,36 @@ def create_app(
 
     # ------------------------------------------------------------ state
 
+    @app.get("/api/public")
+    async def public() -> dict[str, Any]:
+        """What the sign-in screen needs before anyone has signed in."""
+        s = srv.settings
+        return {
+            "site": s.raw["site"],
+            "carers": [{"name": c.name, "role": c.role} for c in s.carers],
+        }
+
     @app.get("/api/state")
-    async def state() -> dict[str, Any]:
+    async def state(request: Request) -> dict[str, Any]:
+        srv.viewer(request)
         return srv.hello()
 
     @app.get("/api/incidents")
-    async def incidents(state: str | None = None) -> list[dict[str, Any]]:
+    async def incidents(
+        request: Request, state: str | None = None
+    ) -> list[dict[str, Any]]:
+        srv.viewer(request)
         items = sorted(srv.service.incidents.values(), key=lambda i: -i.opened_at)
         return [i.to_dict() for i in items if state is None or i.state == state]
 
     @app.get("/api/incidents/{inc_id}")
-    async def get_incident(inc_id: str) -> dict[str, Any]:
+    async def get_incident(inc_id: str, request: Request) -> dict[str, Any]:
+        srv.viewer(request)
         return incident(inc_id).to_dict()
 
     @app.get("/api/incidents/{inc_id}/replay")
-    async def replay(inc_id: str) -> dict[str, Any]:
+    async def replay(inc_id: str, request: Request) -> dict[str, Any]:
+        srv.viewer(request)
         inc = incident(inc_id)
         frames = srv.service.store.replay(inc.id) if srv.service.store else []
         return {"incident": inc.id, "fps": FPS, "frames": frames}
@@ -267,10 +355,13 @@ def create_app(
     # ------------------------------------------------------------ carer actions
 
     @app.post("/api/login")
-    async def login(body: Login) -> dict[str, str]:
+    async def login(body: Login, request: Request) -> dict[str, str]:
+        if not srv.login_allowed(request):
+            raise HTTPException(429, "too many wrong PINs; wait 10 minutes")
         if not srv.settings.carer(body.carer) or body.pin != str(
             srv.settings.raw["shift_pin"]
         ):
+            srv.failed_logins[client_address(request)].append(time.time())
             raise HTTPException(401, "wrong name or PIN")
         return {"carer": body.carer, "token": srv.tokens.token(body.carer)}
 
@@ -345,7 +436,8 @@ def create_app(
         return {"results": await srv.notifier.send(push)}
 
     @app.get("/api/export/incidents.csv", response_class=PlainTextResponse)
-    async def export() -> str:
+    async def export(request: Request) -> str:
+        srv.viewer(request)
         cols = [
             "id", "room", "kind", "level", "opened_at", "acknowledged_by",
             "acknowledged_at", "attending_at", "resolved_by", "resolved_at",
@@ -396,6 +488,9 @@ def create_app(
     @app.websocket("/ws")
     async def ws(sock: WebSocket, frames: str = "all") -> None:
         await sock.accept()
+        if not srv.can_view(sock):
+            await sock.close(code=4401, reason="sign in first")
+            return
         client = Client(frames)
         srv.hub.clients.add(client)
 

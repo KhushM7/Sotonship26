@@ -6,11 +6,15 @@ site:
   name: Larkfield House
   ward: Willow Ward
 port: 8000
-# where the phones reach the laptop: "auto" = http://<this laptop's LAN IP>:<port>,
-# or a tunnel URL such as https://xyz.trycloudflare.com
+# tunnel: true starts a Cloudflare quick tunnel (cloudflared must be installed), so
+# phones reach the laptop from any network at https://<words>.trycloudflare.com; the
+# address is new each start and goes into every notification automatically
+tunnel: false
+# without a tunnel, where phones reach the laptop: "auto" = http://<LAN IP>:<port>,
+# re-detected for every push
 public_url: auto
-# requests from this laptop act as "Nurse station" without a PIN; set false when a
-# tunnel is running, because tunnel traffic also arrives from localhost
+# requests from this laptop act as "Nurse station" without a PIN (tunnel traffic is
+# recognised by its forwarding headers and always needs a sign-in)
 trust_localhost: true
 shift_pin: "2468"
 
