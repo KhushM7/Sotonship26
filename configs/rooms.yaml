@@ -12,7 +12,7 @@ rooms:
     camera: CAM 01
     name: Room 1
     resident: M.H.
-    carers: [Amara Okafor]
+    carers: [Khush Mehta]
     source: replay
     idle:
       - {dataset: GMDCSA24, path: Subject_2/ADL/07}
@@ -22,7 +22,7 @@ rooms:
     camera: CAM 02
     name: Room 2
     resident: J.P.
-    carers: [Amara Okafor]
+    carers: [Khush Mehta]
     source: replay
     idle:
       - {dataset: caucafall, path: adl/WalkS10}
@@ -31,7 +31,7 @@ rooms:
     camera: CAM 03
     name: Room 3
     resident: E.K.
-    carers: [Tomasz Wilk]
+    carers: [Ananth Harinarain]
     source: replay
     idle:
       - {dataset: GMDCSA24, path: Subject_2/ADL/08}
@@ -40,7 +40,7 @@ rooms:
     camera: CAM 04
     name: Room 4
     resident: D.R.
-    carers: [Amara Okafor, Tomasz Wilk]
+    carers: [Khush Mehta, Ananth Harinarain]
     source: replay
     idle:
       - {dataset: GMDCSA24, path: Subject_2/ADL/06}
@@ -51,7 +51,7 @@ rooms:
     camera: CAM 05
     name: Room 5
     resident: S.N.
-    carers: [Tomasz Wilk]
+    carers: [Ananth Harinarain]
     source: replay
     idle:
       - {dataset: GMDCSA24, path: Subject_2/ADL/01}
@@ -63,7 +63,7 @@ rooms:
     camera: CAM 06
     name: Room 6
     resident: B.A.
-    carers: [Tomasz Wilk]
+    carers: [Ananth Harinarain]
     source: replay
     idle:
       - {dataset: GMDCSA24, path: Subject_2/ADL/17}

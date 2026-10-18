@@ -23,7 +23,7 @@ from fallsense_server.settings import load_settings
 
 @pytest.fixture
 def app_and_server(tmp_path: Path):  # type: ignore[no-untyped-def]
-    settings = load_settings()
+    settings = load_settings(local_overrides=False)
     try:
         app = create_app(settings, start=False, state_dir=tmp_path)
     except (FileNotFoundError, KeyError) as e:
@@ -50,16 +50,16 @@ def test_scenario_fall_reaches_ack_attend_resolve(app_and_server) -> None:  # ty
     with TestClient(app) as client:
         assert client.get(f"/api/incidents/{inc.id}/replay").json()["frames"]
         bad = client.post(
-            f"/api/incidents/{inc.id}/ack", json={"carer": "Amara Okafor", "token": "x"}
+            f"/api/incidents/{inc.id}/ack", json={"carer": "Khush Mehta", "token": "x"}
         )
         assert bad.status_code == 200  # the test client counts as this laptop
         tok = client.post(
-            "/api/login", json={"carer": "Amara Okafor", "pin": "2468"}
+            "/api/login", json={"carer": "Khush Mehta", "pin": "2468"}
         ).json()["token"]
         r = client.post(
-            f"/api/push/{inc.id}/ack", params={"carer": "Amara Okafor", "token": tok}
+            f"/api/push/{inc.id}/ack", params={"carer": "Khush Mehta", "token": tok}
         )
-        assert r.json()["acknowledged_by"] == "Amara Okafor"
+        assert r.json()["acknowledged_by"] == "Khush Mehta"
         client.post(f"/api/incidents/{inc.id}/attend", json={})
         r = client.post(
             f"/api/incidents/{inc.id}/resolve",

@@ -21,13 +21,15 @@ from fallsense_server.settings import load_settings
 from fallsense_server.tunnel import URL
 
 TUNNEL = {"cf-connecting-ip": "203.0.113.7", "cf-ray": "abc"}
-CARER = "Amara Okafor"
+CARER = "Khush Mehta"
 
 
 @pytest.fixture
 def client(tmp_path: Path):  # type: ignore[no-untyped-def]
     try:
-        app = create_app(load_settings(), start=False, state_dir=tmp_path)
+        app = create_app(
+            load_settings(local_overrides=False), start=False, state_dir=tmp_path
+        )
     except (FileNotFoundError, KeyError) as e:
         pytest.skip(f"replay data not available: {e}")
     with TestClient(app) as c:
@@ -91,7 +93,7 @@ def test_the_wall_acts_as_the_nurse_station(client: TestClient) -> None:
 
 
 def test_deployed_laptop_is_not_trusted(tmp_path: Path) -> None:
-    settings = load_settings()
+    settings = load_settings(local_overrides=False)
     settings.raw["trust_localhost"] = False
     app = create_app(settings, start=False, state_dir=tmp_path)
     with TestClient(app) as c:
