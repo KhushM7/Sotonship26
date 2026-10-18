@@ -201,3 +201,40 @@ def test_write_scores_temperature(tmp_path: Path) -> None:
     spread100 = p100[cols].to_numpy().std(axis=1)
     assert (spread100 < spread1).all()
     assert np.allclose(p100[cols].to_numpy(), 0.25, atol=0.01)
+
+
+# ---------------------------------------------------------------- ensembles
+
+
+def test_ensemble_logits_softmax_is_mean_of_members() -> None:
+    rng = np.random.default_rng(1)
+    a, b = rng.normal(size=(5, 4)), rng.normal(size=(5, 4))
+    got = calibrate.softmax_t(calibrate.ensemble_logits([a, b]))
+    want = (calibrate.softmax_t(a) + calibrate.softmax_t(b)) / 2
+    np.testing.assert_allclose(got, want, atol=1e-6)
+
+
+def test_ensemble_of_one_run_scores_like_the_run(tmp_path: Path) -> None:
+    run, split = _toy_run(tmp_path)
+    ens = tmp_path / "toy-ens"
+    ens.mkdir()
+    (ens / "ensemble.yaml").write_text("members: [toy-run, toy-run]\n", "utf-8")
+    single = calibrate.write_scores(run, split, tmp_path / "s.parquet")
+    double = calibrate.write_scores(ens, split, tmp_path / "e.parquet")
+    cols = calibrate.CLASS_COLUMNS
+    np.testing.assert_allclose(double[cols], single[cols], atol=1e-5)
+
+
+def test_alert_state_matches_alerts_from_scores() -> None:
+    pf = [0.1, 0.9, 0.2, 0.6, 0.1] + [0.0] * 200 + [0.95]
+    fallen = [0.0] * 3 + [0.9] * 40 + [0.0] * 163
+    df = _scores(pf, fallen)
+    state = calibrate.AlertState(TH["t_high"], TH["t_low"], on_floor_s=5)
+    live = [
+        (t, *hit)
+        for t, p, f in zip(df["t_s"], df["p_falling"], df["p_fallen"])
+        if (hit := state.step(t, p, f)) is not None
+    ]
+    a = calibrate.alerts_from_scores(df, {**TH, "on_floor_seconds_eval": 5})
+    assert [lv for _, lv, _ in live] == _levels(a)
+    np.testing.assert_allclose([t for t, _, _ in live], a["t_s"], rtol=1e-6)

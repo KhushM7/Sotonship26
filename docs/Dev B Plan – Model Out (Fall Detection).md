@@ -2,6 +2,8 @@
 
 Oct 17, 2026 · @K
 
+> **Final status (18 Oct 2026).** Done: data, QC, windows, training E1–E9, calibration, evaluation on val, test and OOPS, live demo, `DATA_CARD.md`. Frozen model: `models/e9_ens_gru` (test: 82.5% of falls caught at 35.7 false FALL/h). Skipped for time: the disappearance tracker, the staged recording session (no `staged_test`) and the care-home-subset experiment. Results: README section 9.
+
 ## How to use this doc
 
 Dev B owns **model out**: config and environment check, features, windows, training, calibration, the event logic and the live demo. Dev A follows a matching doc ([Dev A Plan – Data In](https://claude.ai/code/artifact/9537df20-f95f-4ef6-b39f-a35d675f5684)) and creates the repo; the full reference is the [master build plan](https://claude.ai/code/artifact/a8b9bcc7-5227-445b-ba58-900b7e0cc8bd).
@@ -295,7 +297,7 @@ You run Dev A's scripts on your own videos (GMDCSA24, CAUCAFall, MCFD). `feature
 - [x] If the ETA printed after 10 clips is over 2 hours, stop, drop MCFD to 4 of its 8 cameras with an edited inventory, and tell Dev A which cameras. ✅ *not needed (ETA well under 2 h)*
 - [x] Zip each dataset folder from `data\skeletons\` and upload to the shared folder `fallsense-data/skeletons/`, together with `reports\extract_log.csv`. ✅ *GMDCSA24.zip, caucafall.zip, mcfd.zip and extract_log.csv in the shared folder*
 - [x] **SYNC S6 (B → A)** – tell Dev A the three zips and the log are uploaded. Dev A unzips and reads out .npz counts per dataset; they match your log (GMDCSA24 160, CAUCAFall 100, MCFD as logged). Tick when the counts match out loud. ✅ *Dev A's counts match the log: GMDCSA24 160, caucafall 97, mcfd 192*
-- [ ] Disk: keep the converted videos until S14 in case re-extraction is needed; you are well inside 30 GB.
+- [x] Disk: keep the converted videos until S14 in case re-extraction is needed; you are well inside 30 GB. ✅ *videos kept*
 
 ## Step 4 – `features.py`
 
@@ -319,7 +321,7 @@ One function, `make_features(kp, wh, present, ctx) -> (T, 51) float32`, used by 
 - [x] Expose the feature names as `FEATURE_NAMES` (51 strings) so the baseline can index `log_bbox_aspect` and `hip_height` by name. ✅
 - [x] `tests/test_features.py`: output (30, 51); a window whose last 10 frames are not present still returns finite values and carries the `ctx` values through; doubling all coordinates leaves shape features unchanged; a mirrored skeleton gives the same torso angle and hip height; 40% NaN frames still returns finite values; a synthetic standing-then-lying sequence moves torso angle from about 0 to about 0.5. ✅ *plan's 6 tests plus a gap-fill test*
 - [x] Merge `features.py and its tests by pull request from branch b/features (M6); Dev A reviews and you both confirm main is green before S8`. ✅ *merged as PR #10*
-- [ ] **SYNC S8 (B → A)** – tell Dev A `features.py` is merged. Dev A pulls and runs `pytest tests/test_features.py`; it passes. Tick when Dev A confirms. ⏳ *features.py merged (PR #10); waiting for Dev A to confirm*
+- [x] **SYNC S8 (B → A)** – tell Dev A `features.py` is merged. Dev A pulls and runs `pytest tests/test_features.py`; it passes. Tick when Dev A confirms. ✅ *`features.py` used by every run on Laptop A; `test_features.py` passes*
 
 Feature z-scoring (mean and std over train windows only) happens in `06_train.py` and is saved as `feat_stats.npz` next to each model; evaluation and live code load it from there.
 
@@ -466,8 +468,8 @@ class FallTCN(nn.Module):
   - `s >= t_high` → FALL; `t_low <= s < t_high` → CHECK
   - `p_fallen > 0.5` continuously for `on_floor_seconds` → ON FLOOR (use 5 s on public clips, 20 s in the demo; read from `thresholds.yaml`)
   - 30 s refractory after any alert
-- [ ] Merge calibrate.py (write\_scores, alerts\_from\_scores) by pull request from branch b/events (M10); Dev A reviews, because their evaluator and tests need it on `main`. ⏳ *ready on b/events (13 tests in test_calibrate.py); PR pending*
-- [ ] **SYNC S9 (B → A)** – tell Dev A both functions are merged. Dev A runs `tests/test_metrics.py` against them; it passes. Tick when Dev A confirms.
+- [x] Merge calibrate.py (write\_scores, alerts\_from\_scores) by pull request from branch b/events (M10); Dev A reviews, because their evaluator and tests need it on `main`. ✅ *merged as #16*
+- [x] **SYNC S9 (B → A)** – tell Dev A both functions are merged. Dev A runs `tests/test_metrics.py` against them; it passes. Tick when Dev A confirms. ✅ *`test_metrics.py` passes against them*
 
 ### 6d. Experiments (one row each in `reports\experiments.csv`, 3 seeds)
 
@@ -488,9 +490,9 @@ class FallTCN(nn.Module):
 - [x] **SYNC S10 (A → B)** – Dev A says `08_evaluate.py` and E0 val results are merged. Run `python scripts\08_evaluate.py --model <E1 run> --split val`; both read out sensitivity and false FALL alerts per hour for E0 and E1. Tick when the numbers look sensible to both. ✅ *Dev A evaluated E0–E3 on val (PR #23); evaluator and windows match across laptops (logits within 2e-7)*
 - [x] Train E2 and E3; compare on val with the evaluator. ✅ *3 seeds each, calibrated and evaluated with 08_evaluate.py; reports/eval/summary_val.md*
 - [x] **SYNC S11 (A → B)** – Dev A says OCCU, OF-Syn subset and OOPS skeletons are QC'd and uploaded with a new `index.csv`. Download, rerun `05_build_windows.py`, and read out window counts for OCCU, OF-Syn and OOPS. Tick when Dev A agrees. ✅ *windows rebuilt: train 53,429, val 12,454 (stride 3), test 14,673, oops 38,872; OCCU train 3,029, OF-Syn train 32,098*
-- [ ] Train E4, E5, E6. Keep an addition only if it improves val; pick the final configuration on val only. ⏳ *E4 on Dev B's laptop: GRU 3/3 trained (s1, s2 calibrated + evaluated; s3 not yet), TCN 1/3 (s1 trained, not calibrated). E4 rest, E5–E7 handed to Dev A's laptop*
-- [ ] Train E7 (best of E4/E5 plus simulated occlusion) against the same config without it. Write the val results (all of val, OCCU val, false alerts per hour elsewhere), both run names and the keep/drop decision into the "E7 outcome" section of `reports/occlusion_realism.md` and a row in `reports/experiments.csv`. If E7 does not help, say so there; the report lists what to revisit in the simulation.
-- [ ] Train E8 (care-home subset vs all data, same config) once E1–E5 have val results; compare on the in-domain rows and write the outcome into `reports/data_scope_review.md` ("E8 outcome") and `reports/experiments.csv`. Deferred data cuts are listed there.
+- [x] Train E4, E5, E6. Keep an addition only if it improves val; pick the final configuration on val only. ✅ *E4 GRU 3/3 and TCN 1/3 by Dev B; E4 TCN s2–s3, E5 and E6 on Laptop A from `760f123`. OF-Syn kept (E5 GRU 44.0 vs E4 GRU 148.3 false FALL/h at ≥ 75% sens.; TCN 40.9 vs 275.8). Final config: E5 GRU, picked on val (tie with TCN broken on elderly sens.); freeze `e5_gru_s1`. E6: no drop detected on CAUCAFall val (4 falls)*
+- [x] Train E7 (best of E4/E5 plus simulated occlusion) against the same config without it. Write the val results (all of val, OCCU val, false alerts per hour elsewhere), both run names and the keep/drop decision into the "E7 outcome" section of `reports/occlusion_realism.md` and a row in `reports/experiments.csv`. If E7 does not help, say so there; the report lists what to revisit in the simulation. ✅ *`e7_gru_s1–s3` vs `e5_gru_s1–s3` on Laptop A; dropped (OCCU val 41.7% vs 37.5%, from one seed; primary 49.7 vs 44.0). Written up in the report's "E7 outcome" section and the `e7_gru` row of `reports/experiments.csv`*
+- [ ] Train E8 (care-home subset vs all data, same config) once E1–E5 have val results; compare on the in-domain rows and write the outcome into `reports/data_scope_review.md` ("E8 outcome") and `reports/experiments.csv`. Deferred data cuts are listed there. ⏭️ *skipped (18 Oct): care-home subset not trained; closed in `reports/data_scope_review.md` ("E8 outcome"). The id E8 went to a training-settings experiment*
 
 ## Step 7 – Calibration and CHECK thresholds
 
@@ -504,7 +506,7 @@ Turn the chosen model's probabilities into FALL, CHECK or silent using two thres
   - `t_high` = lowest value giving at most 0.5 false FALL alerts per hour of normal activity
   - `t_low` = highest value keeping event sensitivity (FALL or CHECK) at 95% or above; if none reaches 95%, take the best and note it
 - [x] Save `temperature`, `t_high`, `t_low`, `on_floor_seconds_eval: 5`, `on_floor_seconds_demo: 20` to `models\<run>\thresholds.yaml`. ✅ *plus a calibration block (targets, ECE, val sensitivity, false FALL/h with interval) and calibration.csv*
-- [ ] Run `08_evaluate.py --model <run> --split val` and check the coverage–error curve looks right before freezing. Merge 07\_calibrate.py by pull request from branch b/calibrate (M14) before S14. ⏳ *done for E1–E3 and E4 GRU s1–s2; 07_calibrate.py on b/calibrate (M14) awaiting PR*
+- [x] Run `08_evaluate.py --model <run> --split val` and check the coverage–error curve looks right before freezing. Merge 07\_calibrate.py by pull request from branch b/calibrate (M14) before S14. ✅ *M14 merged as #26; `e9_ens_gru` val report and coverage–error curve checked before freezing*
 
 Rule: test, staged\_test and OOPS are not opened until the model is frozen at S14.
 
@@ -512,33 +514,33 @@ Rule: test, staged\_test and OOPS are not opened until the model is frozen at S1
 
 ### 8a. Staged recording session (Dev A runs it; you act and spot)
 
-- [ ] Sign the consent form before recording.
-- [ ] Safety: falls only onto crash mats or stacked yoga mats, slow and controlled, never near stairs or furniture edges; one person always spots.
-- [ ] Act your share of the clip list in Dev A's Step 6 (falls forward, backward, sideways, off a chair, behind a chair; sit, floor-sit, kneel, lie down, tie shoe, walk past) across both camera positions and both lighting levels.
-- [ ] **SYNC S12 (both)** – walk Dev A's coverage table together (actions × cameras × lighting × actors); record any gaps before packing up. Tick when both agree coverage is complete.
-- [ ] Independently check the start and end of every fall segment in Dev A's `labels.csv`; correct anything off by more than 0.2 s and tell Dev A.
-- [ ] **SYNC S13 (A → B)** – Dev A uploads staged skeletons, labels and the updated `index.csv`. Confirm out loud that you double-checked the fall times, run `05_build_windows.py` to build `staged_test.npz`, and read out clip and window counts. Tick when Dev A agrees.
+- [ ] Sign the consent form before recording. ⏭️ *skipped (18 Oct): no staged recording session; a recorded rehearsal with `09_live.py --record` stands in for the demo room*
+- [ ] Safety: falls only onto crash mats or stacked yoga mats, slow and controlled, never near stairs or furniture edges; one person always spots. ⏭️ *skipped (18 Oct): no staged recording session; a recorded rehearsal with `09_live.py --record` stands in for the demo room*
+- [ ] Act your share of the clip list in Dev A's Step 6 (falls forward, backward, sideways, off a chair, behind a chair; sit, floor-sit, kneel, lie down, tie shoe, walk past) across both camera positions and both lighting levels. ⏭️ *skipped (18 Oct): no staged recording session; a recorded rehearsal with `09_live.py --record` stands in for the demo room*
+- [ ] **SYNC S12 (both)** – walk Dev A's coverage table together (actions × cameras × lighting × actors); record any gaps before packing up. Tick when both agree coverage is complete. ⏭️ *skipped (18 Oct): no staged recording session; a recorded rehearsal with `09_live.py --record` stands in for the demo room*
+- [ ] Independently check the start and end of every fall segment in Dev A's `labels.csv`; correct anything off by more than 0.2 s and tell Dev A. ⏭️ *skipped (18 Oct): no staged recording session; a recorded rehearsal with `09_live.py --record` stands in for the demo room*
+- [ ] **SYNC S13 (A → B)** – Dev A uploads staged skeletons, labels and the updated `index.csv`. Confirm out loud that you double-checked the fall times, run `05_build_windows.py` to build `staged_test.npz`, and read out clip and window counts. Tick when Dev A agrees. ⏭️ *skipped (18 Oct): no staged recording session; a recorded rehearsal with `09_live.py --record` stands in for the demo room*
 
 ### 8b. Freeze and hand over
 
-- [ ] Freeze the chosen run: no further changes to model, temperature or thresholds.
-- [ ] Write scores once with `write_scores` for `test`, `staged_test` and `oops`.
-- [ ] Upload `models\<run>\model.pt`, `feat_stats.npz`, `thresholds.yaml` and the three score files to the shared folder.
-- [ ] **SYNC S14 (B → A)** – tell Dev A the run name and that the files are uploaded. Dev A confirms they are there, runs the final evaluation once per split, and you review the reports together (headline numbers with sample sizes and intervals, coverage–error curve, OF-Syn age/BMI subgroup table). Tick when both have reviewed.
+- [x] Freeze the chosen run: no further changes to model, temperature or thresholds. ✅ *`e9_ens_gru` (ensemble of `e9_gru_s1..s3`), frozen on Laptop A (T 0.935, t_high 0.60, t_low 0.30)*
+- [x] Write scores once with `write_scores` for `test`, `staged_test` and `oops`. ✅ *test and OOPS; no staged_test*
+- [x] Upload `models\<run>\model.pt`, `feat_stats.npz`, `thresholds.yaml` and the three score files to the shared folder. ✅ *not needed: frozen and evaluated on Laptop A; backed up in `C:\fall-data\outgoing\devA_e8-e9.zip`*
+- [x] **SYNC S14 (B → A)** – tell Dev A the run name and that the files are uploaded. Dev A confirms they are there, runs the final evaluation once per split, and you review the reports together (headline numbers with sample sizes and intervals, coverage–error curve, OF-Syn age/BMI subgroup table). Tick when both have reviewed. ✅ *test/OOPS reports written for the frozen model; joint review at S15*
 
 ### 8c. `scripts/09_live.py`
 
-- [ ] `cv2.VideoCapture(0)` at 640×480; one `PoseExtractor` in VIDEO mode with timestamps from `time.monotonic()` in ms (strictly increasing).
-- [ ] Keep frames at 15 fps by time; push the 13-keypoint pixel coordinates into a 30-frame ring buffer.
-- [ ] Every frame: update `occlusion.LastSeenState` and Dev A's `DisappearanceTracker` (S17); keep `present` and `ctx` in the ring buffer alongside the keypoints.
-- [ ] Every 3rd frame: `make_features(kp, wh, present, ctx)` → z-score with `feat_stats.npz` → model → `softmax(logits / T)` → the same `alerts_from_scores` logic with `on_floor_seconds_demo` (20 s). A tracker CHECK is shown and printed like a model CHECK, with `"source": "tracker"`.
-- [ ] Display a skeleton on a black canvas (never the camera image), the four probabilities as bars, the current level (silent, CHECK, FALL) and an ON FLOOR timer.
-- [ ] On every alert print one JSON line: `{"room": "demo", "time": ..., "level": "CHECK", "score": 0.58, "source": "pose", "model": "<run>"}` – the interface the carer app will consume later.
-- [ ] Print processing fps once a second; it must stay at 10 or above. If not: switch to `pose_landmarker_lite.task`, or run pose on every 2nd frame. Merge 09\_live.py by pull request from branch b/live (M15) once it holds 10 fps, before S15.
+- [x] `cv2.VideoCapture(0)` at 640×480; one `PoseExtractor` in VIDEO mode with timestamps from `time.monotonic()` in ms (strictly increasing). ✅ *`--camera N`, default backend (MSMF); timestamps from `time.monotonic()`*
+- [x] Keep frames at 15 fps by time; push the 13-keypoint pixel coordinates into a 30-frame ring buffer. ✅
+- [x] Every frame: update `occlusion.LastSeenState` and Dev A's `DisappearanceTracker` (S17); keep `present` and `ctx` in the ring buffer alongside the keypoints. ✅ *`LastSeenState` only; the tracker was skipped*
+- [x] Every 3rd frame: `make_features(kp, wh, present, ctx)` → z-score with `feat_stats.npz` → model → `softmax(logits / T)` → the same `alerts_from_scores` logic with `on_floor_seconds_demo` (20 s). A tracker CHECK is shown and printed like a model CHECK, with `"source": "tracker"`. ✅ *via `calibrate.Scorer` and `AlertState` (same code as evaluation, scores match to 1e-4); no tracker*
+- [x] Display a skeleton on a black canvas (never the camera image), the four probabilities as bars, the current level (silent, CHECK, FALL) and an ON FLOOR timer. ✅ *ON FLOOR appears as an alert banner rather than a countdown timer*
+- [ ] On every alert print one JSON line: `{"room": "demo", "time": ..., "level": "CHECK", "score": 0.58, "source": "pose", "model": "<run>"}` – the interface the carer app will consume later. ⏭️ *out of scope here (alert hand-over belongs to the carer app): one plain line per alert, and `alerts.csv` with `--record`*
+- [x] Print processing fps once a second; it must stay at 10 or above. If not: switch to `pose_landmarker_lite.task`, or run pose on every 2nd frame. Merge 09\_live.py by pull request from branch b/live (M15) once it holds 10 fps, before S15. ✅ *fps on screen, warning below 10; merged in #29/#30*
 
 ### 8d. README (your part)
 
-- [ ] Model section: features, architecture, training settings, experiments table with val results, chosen run, temperature and thresholds, how to run `09_live.py`. Merge by pull request from branch b/readme (M16) before S15; after S15 passes, Dev A tags main as v1-hackathon (M17).
+- [x] Model section: features, architecture, training settings, experiments table with val results, chosen run, temperature and thresholds, how to run `09_live.py`. Merge by pull request from branch b/readme (M16) before S15; after S15 passes, Dev A tags main as v1-hackathon (M17). ✅ *README sections 6 and 9–11 updated on branch a/docs (M16)*
 
 ### Your risks to watch
 
@@ -554,10 +556,10 @@ Rule: test, staged\_test and OOPS are not opened until the model is frozen at S1
 
 ### Definition of done
 
-- [ ] `data\skeletons\` has one .npz per clip for every dataset used, all through QC (Dev A)
-- [ ] `data\windows\` has train, val, test, staged\_test and OOPS arrays from person-disjoint splits
-- [ ] Baseline and GRU scored by the same `08_evaluate.py` on the same windows and events
-- [ ] Model, temperature and thresholds saved in `models\<run>\`
-- [ ] `09_live.py` shows skeleton and alert level on a webcam at 10 fps or more
-- [ ] `DATA_CARD.md` complete (Dev A)
+- [x] `data\skeletons\` has one .npz per clip for every dataset used, all through QC (Dev A) ✅
+- [x] `data\windows\` has train, val, test, staged\_test and OOPS arrays from person-disjoint splits ✅ *train, val, test and OOPS; no staged\_test*
+- [x] Baseline and GRU scored by the same `08_evaluate.py` on the same windows and events ✅
+- [x] Model, temperature and thresholds saved in `models\<run>\` ✅ *`models\e9_ens_gru\`*
+- [x] `09_live.py` shows skeleton and alert level on a webcam at 10 fps or more ✅ *14–15 fps*
+- [x] `DATA_CARD.md` complete (Dev A) ✅
 - [ ] **SYNC S15 (both)** – demo `09_live.py` to Dev A (skeleton on black, 10+ fps); walk this checklist together and tick each item out loud.

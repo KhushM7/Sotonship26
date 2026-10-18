@@ -10,7 +10,10 @@ epoch, all of val in val.npz order), confusion.png.
 
 The best epoch is selected on val windows from the --train-sets datasets only (a
 model trained on the core sets is not judged on OF-Syn val); AP and F1 on all of
-val are logged alongside as val_all_*.
+val are logged alongside as val_all_*. --select event picks the epoch with the
+fewest false FALL alerts/h at FALL sensitivity >= --select-target on those val
+clips (the decision metric), with window AP as the tie-break; --select ap (the
+default, E1-E7) uses window AP then macro F1.
 """
 
 import argparse
@@ -37,13 +40,15 @@ from torch import nn
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src"))
 
-from fallsense import dataset, windows
+from fallsense import calibrate, dataset, metrics, windows
 from fallsense.config import DATA, load_config
 from fallsense.models import MODELS, build_model
 
 CFG = load_config()
 FALLING = windows.FALLING
+CONTROLLED_LOW = 3
 PATIENCE = 8
+SELECT_GRID = np.round(np.arange(0.05, 0.951, 0.05), 2)
 
 
 def seed_everything(seed: int) -> None:
@@ -81,11 +86,13 @@ def git_commit() -> str:
     return out.stdout.strip()
 
 
-def class_weights(y: np.ndarray) -> torch.Tensor:
-    """w_c = sqrt(N / (4 n_c)), renormalised to mean 1."""
+def class_weights(y: np.ndarray, low_weight: float = 1.0) -> torch.Tensor:
+    """w_c = sqrt(N / (4 n_c)), renormalised to mean 1; controlled_low x low_weight."""
     n_c = np.maximum(np.bincount(y, minlength=windows.N_CLASSES), 1)
     w = np.sqrt(len(y) / (windows.N_CLASSES * n_c))
-    return torch.tensor(w / w.mean(), dtype=torch.float32)
+    w = w / w.mean()
+    w[CONTROLLED_LOW] *= low_weight
+    return torch.tensor(w, dtype=torch.float32)
 
 
 def feature_stats(feats: np.ndarray) -> dict[str, np.ndarray]:
@@ -123,6 +130,28 @@ def val_metrics(logits: np.ndarray, y: np.ndarray) -> tuple[float, float]:
     return float(ap), float(f1)
 
 
+def event_score(
+    logits: np.ndarray,
+    val: dict[str, np.ndarray],
+    clips: pd.DataFrame,
+    events: pd.DataFrame,
+    target: float,
+) -> tuple[float, float, float]:
+    """(fewest false FALL/h at FALL sensitivity >= target, its sensitivity, threshold).
+
+    inf false/h when no threshold reaches the target.
+    """
+    sc = calibrate.scores_frame(val, calibrate.softmax_t(logits))
+    sc = sc[sc["clip_id"].isin(set(clips["clip_id"]))]
+    best = (np.inf, 0.0, np.nan)
+    for t in SELECT_GRID:
+        alerts = calibrate.alerts_from_scores(sc, {"t_high": t, "t_low": t})
+        r = metrics.summarise(*metrics.match_events(clips, events, alerts))
+        if r["sensitivity_alarm"] >= target and r["false_alarms_per_h"] < best[0]:
+            best = (r["false_alarms_per_h"], r["sensitivity_alarm"], float(t))
+    return best
+
+
 def save_confusion(logits: np.ndarray, y: np.ndarray, path: Path) -> None:
     cm = confusion_matrix(y, logits.argmax(1), labels=range(windows.N_CLASSES))
     fig, ax = plt.subplots(figsize=(5, 4.5))
@@ -156,6 +185,21 @@ def main() -> int:
     ap.add_argument("--windows-dir", type=Path, default=DATA / "windows")
     ap.add_argument("--index", type=Path, default=DATA / "skeletons" / "index.csv")
     ap.add_argument("--epochs", type=int, default=40)
+    ap.add_argument("--lr", type=float, default=2e-3)
+    ap.add_argument("--weight-decay", type=float, default=1e-4)
+    ap.add_argument(
+        "--low-weight",
+        type=float,
+        default=1.0,
+        help="extra loss weight on controlled_low (near-miss) windows",
+    )
+    ap.add_argument(
+        "--select",
+        choices=["ap", "event"],
+        default="ap",
+        help="epoch selection: window AP, or false FALL/h at --select-target",
+    )
+    ap.add_argument("--select-target", type=float, default=0.80)
     ap.add_argument("--batch", type=int, default=256)
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument(
@@ -174,7 +218,7 @@ def main() -> int:
     train = windows.load_windows("train", path=train_npz)
     val = windows.load_windows("val", path=args.windows_dir / "val.npz")
     index = None
-    if args.train_sets or args.occlude:
+    if args.train_sets or args.occlude or args.select == "event":
         index = pd.read_csv(args.index)
     if args.train_sets:
         assert index is not None
@@ -225,9 +269,18 @@ def main() -> int:
 
     model = build_model(args.model)
     loss_fn = nn.CrossEntropyLoss(
-        weight=class_weights(train["y"]), label_smoothing=0.05
+        weight=class_weights(train["y"], args.low_weight), label_smoothing=0.05
     )
-    opt = torch.optim.AdamW(model.parameters(), lr=2e-3, weight_decay=1e-4)
+    opt = torch.optim.AdamW(
+        model.parameters(), lr=args.lr, weight_decay=args.weight_decay
+    )
+    sel_clips = sel_events = None
+    if args.select == "event":
+        assert index is not None
+        sel_clips = metrics.eval_clips(index, "val")
+        if args.train_sets:
+            sel_clips = sel_clips[sel_clips["dataset"].isin(args.train_sets)]
+        sel_events = metrics.fall_events(sel_clips)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=args.epochs)
 
     with open(args.out / "config.yaml", "w", encoding="utf-8") as f:
@@ -237,7 +290,7 @@ def main() -> int:
         run["val_selection"] = " ".join(args.train_sets or ["all"])
         yaml.safe_dump({"run": run, "config": CFG}, f, sort_keys=False)
 
-    log, best, best_logits, stale = [], (-1.0, -1.0), None, 0
+    log, best, best_logits, stale = [], (-np.inf, -1.0), None, 0
     for epoch in range(1, args.epochs + 1):
         t0 = time.perf_counter()
         model.train()
@@ -255,18 +308,28 @@ def main() -> int:
         logits = predict(model, x_val)
         ap_fall, f1 = val_metrics(logits[sel], val["y"][sel])
         ap_all, f1_all = val_metrics(logits, val["y"])
+        row = {"epoch": epoch, "loss": total / n, "val_ap_falling": ap_fall,
+               "val_macro_f1": f1, "val_all_ap_falling": ap_all,
+               "val_all_macro_f1": f1_all}  # fmt: skip
+        extra = ""
+        if args.select == "event":
+            fph, sens, t_best = event_score(
+                logits, val, sel_clips, sel_events, args.select_target
+            )
+            row.update(val_false_per_h=fph, val_sens=sens, val_t=t_best)
+            key = (-fph, ap_fall)
+            extra = f"  false/h {fph:.1f} at sens {sens:.3f} (t {t_best})"
+        else:
+            key = (ap_fall, f1)
         secs = time.perf_counter() - t0
-        log.append(
-            {"epoch": epoch, "loss": total / n, "val_ap_falling": ap_fall,
-             "val_macro_f1": f1, "val_all_ap_falling": ap_all,
-             "val_all_macro_f1": f1_all, "seconds": secs}
-        )  # fmt: skip
+        row["seconds"] = secs
+        log.append(row)
         pd.DataFrame(log).to_csv(args.out / "train_log.csv", index=False)
-        improved = (ap_fall, f1) > best
+        improved = key > best
         print(
             f"epoch {epoch:2d}  loss {total / n:.4f}  val AP(falling) {ap_fall:.4f}"
             f"  macro F1 {f1:.4f}  (all val {ap_all:.4f} / {f1_all:.4f})"
-            f"  {secs:.1f}s" + ("  *" if improved else "")
+            f"{extra}  {secs:.1f}s" + ("  *" if improved else "")
         )
         if epoch == 1:
             # epoch 1 includes DataLoader worker start-up (slow on Windows)
@@ -277,7 +340,7 @@ def main() -> int:
             if secs > 120:
                 print("WARNING: over 2 min per epoch; precompute train_aug.npz")
         if improved:
-            best, best_logits, stale = (ap_fall, f1), logits, 0
+            best, best_logits, stale = key, logits, 0
             torch.save(
                 {"model": args.model, "state_dict": model.state_dict()},
                 args.out / "model.pt",
@@ -290,7 +353,15 @@ def main() -> int:
 
     np.save(args.out / "val_logits.npy", best_logits)
     save_confusion(best_logits, val["y"], args.out / "confusion.png")
-    print(f"best val AP(falling) {best[0]:.4f}, macro F1 {best[1]:.4f} -> {args.out}")
+    if args.select == "event":
+        print(
+            f"best val AP(falling) {best[1]:.4f}, false FALL/h {-best[0]:.1f} at "
+            f"sens >= {args.select_target:.0%} -> {args.out}"
+        )
+    else:
+        print(
+            f"best val AP(falling) {best[0]:.4f}, macro F1 {best[1]:.4f} -> {args.out}"
+        )
     return 0
 
 
