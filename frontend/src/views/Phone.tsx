@@ -1,5 +1,5 @@
 import { ArrowLeftIcon, BackspaceIcon, BellIcon, BellSlashIcon, CaretRightIcon, SignOutIcon } from "@phosphor-icons/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { adoptLinkIdentity, api, identity, setIdentity, type Identity } from "../api";
 import type { Incident } from "../contracts";
 import { clock, levelText, incidentReason, STATE_LABEL, unanswered, urgent } from "../format";
@@ -9,17 +9,23 @@ import { IncidentView } from "../ui/IncidentView";
 
 /** /phone and /phone/i/:id – opened from the ntfy notification on a carer's phone. */
 export function Phone({ path }: { path: string }) {
-  const [me, setMe] = useState<Identity | null>(() => {
-    adoptLinkIdentity();
-    return identity();
-  });
+  const [link] = useState(adoptLinkIdentity);
+  const [me, setMe] = useState<Identity | null>(identity);
   const hello = useStore((s) => s.hello);
   const incidentId = path.match(/^\/phone\/i\/([^/]+)/)?.[1] ?? null;
   const incident = useStore((s) => (incidentId ? s.incidents[incidentId] : undefined));
+  const acked = useRef(false);
+  const [ackError, setAckError] = useState<string | null>(null);
 
   useEffect(() => connect("none"), []);
   // skeleton frames only for the room this carer is looking at
   useEffect(() => subscribe(incident ? incident.room : "none"), [incident?.room]);
+  // opened from the notification's "I'm going": acknowledge once the incident is known
+  useEffect(() => {
+    if (!link.ack || acked.current || !me || !incident || !unanswered(incident)) return;
+    acked.current = true;
+    api.ack(incident.id).catch((e: Error) => setAckError(e.message));
+  }, [link.ack, me, incident]);
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col px-4 pb-10 pt-[max(16px,env(safe-area-inset-top))]">
@@ -33,6 +39,7 @@ export function Phone({ path }: { path: string }) {
             <a href="/phone" className="mb-6 inline-flex items-center gap-1.5 text-sm text-ink-400">
               <ArrowLeftIcon /> My shift
             </a>
+            {ackError && <p className="mb-4 text-sm text-alarm">Could not mark you as going: {ackError}</p>}
             <IncidentView inc={incident} layout="phone" />
           </>
         ) : (

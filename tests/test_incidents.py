@@ -106,6 +106,18 @@ def test_acknowledged_but_never_arrives_escalates() -> None:
     assert inc.state == ESCALATED and inc.tier == 2
 
 
+def test_pass_it_on_alerts_the_others_not_the_passer() -> None:
+    svc, _ = _service()
+    inc = svc.on_alert("r4", "FALL", 0.8)
+    assert inc is not None
+    svc.ack(inc.id, "Amara")
+    svc.escalate_now(inc.id, "Amara")
+    push = svc.pushes[-1]
+    assert push.priority == 5 and push.title.startswith("PASSED ON")
+    assert "Amara" not in push.carers and {"Tomasz", "Kofi"} <= set(push.carers)
+    assert inc.state == ESCALATED and inc.acknowledged_by is None
+
+
 def test_carer_in_room_mutes_new_incidents_then_expires() -> None:
     svc, clock = _service()
     svc.set_carer_in_room("r4", True, "Amara")

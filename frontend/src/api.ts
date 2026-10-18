@@ -26,15 +26,18 @@ export function setIdentity(id: Identity | null) {
   }
 }
 
-/** A notification link carries ?carer=&token=; keep it so the carer stays signed in. */
-export function adoptLinkIdentity() {
+/**
+ * A notification link carries ?carer=&token= (keep it so the carer stays signed in)
+ * and, from the "I'm going" button, &ack=1. The query is then removed so a reload
+ * does not acknowledge again.
+ */
+export function adoptLinkIdentity(): { ack: boolean } {
   const q = new URLSearchParams(location.search);
   const carer = q.get("carer");
   const token = q.get("token");
-  if (carer && token) {
-    setIdentity({ carer, token });
-    history.replaceState(null, "", location.pathname);
-  }
+  if (carer && token) setIdentity({ carer, token });
+  if (location.search) history.replaceState(null, "", location.pathname);
+  return { ack: q.get("ack") === "1" };
 }
 
 async function post<T>(url: string, body: object = {}): Promise<T> {

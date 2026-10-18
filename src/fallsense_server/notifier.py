@@ -13,6 +13,7 @@ import logging
 import secrets
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlencode
 
 import httpx
 
@@ -47,7 +48,8 @@ class Notifier:
 
     def payload(self, push: Push, carer: str, topic: str) -> dict[str, Any]:
         base = self.settings.public_url()
-        auth = f"carer={carer}&token={self.tokens.token(carer)}"
+        # encoded: a raw space in "Amara Okafor" cuts the link short on Android
+        auth = urlencode({"carer": carer, "token": self.tokens.token(carer)})
         body: dict[str, Any] = {
             "topic": topic,
             "title": push.title,
@@ -59,12 +61,14 @@ class Notifier:
             page = f"{base}/phone/i/{push.incident_id}?{auth}"
             body["click"] = page
             if push.actions:
+                # "I'm going" opens the page, which acknowledges on load. A background
+                # HTTP action fails on the phone hosting the hotspot: ntfy sends it over
+                # mobile data, which cannot reach the laptop; the browser can.
                 body["actions"] = [
                     {
-                        "action": "http",
+                        "action": "view",
                         "label": "I'm going",
-                        "url": f"{base}/api/push/{push.incident_id}/ack?{auth}",
-                        "method": "POST",
+                        "url": f"{page}&ack=1",
                         "clear": True,
                     },
                     {"action": "view", "label": "Open", "url": page},

@@ -327,9 +327,13 @@ class IncidentService:
         return self.resolve(inc_id, who, "false_alarm", reason="looks_fine")
 
     def escalate_now(self, inc_id: str, who: str) -> Incident:
+        """ "Can't go, pass it on": alert the next tier, minus the carer passing it on."""
         inc = self.get(inc_id)
-        if inc.active:
-            self._escalate(inc, f"{who} passed it on")
+        if not inc.active:
+            return inc
+        if inc.acknowledged_by == who:  # they are no longer on the way
+            inc.acknowledged_by = inc.acknowledged_at = None
+        self._escalate(inc, f"{who} can't go", title="PASSED ON", skip=who)
         return inc
 
     def set_carer_in_room(
@@ -371,13 +375,23 @@ class IncidentService:
 
     # ------------------------------------------------------------ internals
 
-    def _escalate(self, inc: Incident, why: str) -> None:
+    def _escalate(
+        self,
+        inc: Incident,
+        why: str,
+        title: str = "NO RESPONSE",
+        skip: str | None = None,
+    ) -> None:
         now = self.clock()
         inc.tier = min(inc.tier + 1, 3)
+        who = [c for c in self.recipients(inc.room, inc.tier) if c != skip]
+        while not who and inc.tier < 3:  # nobody else at this tier: go one higher
+            inc.tier += 1
+            who = [c for c in self.recipients(inc.room, inc.tier) if c != skip]
         inc.state = ESCALATED
         inc.deadline = now + float(self.esc["repeat_s"])
         name = self._room_name(inc.room)
-        title = f"NO RESPONSE – {_label(inc.level)} {name}"
+        title = f"{title} – {_label(inc.level)} {name}"
         msg = f"{why}. Escalated to {TIER_LABEL[inc.tier]}. Tap to respond."
         self._event(
             "escalate",
@@ -385,9 +399,7 @@ class IncidentService:
             f"{why} – {name} escalated to {TIER_LABEL[inc.tier]}",
             inc,
         )
-        self._push(
-            inc, self.recipients(inc.room, inc.tier), PRIORITY[inc.level], title, msg
-        )
+        self._push(inc, who, PRIORITY[inc.level], title, msg)
         self._changed(inc)
 
     def _close(
