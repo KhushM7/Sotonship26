@@ -556,10 +556,23 @@ python scripts\08_evaluate.py --model baseline --split val
 python scripts\08_evaluate.py --model e1_gru_s1 --split val --windows C:\fall-data\windows\val.npz
 python scripts\eval_summary.py                                        # compare every evaluated run
 
-# 8. Tests and lint
+# 8. Ensemble of seeds (averages member probabilities), then calibrate + evaluate it like a run
+python scripts\10_ensemble.py --name e9_ens_gru --members e9_gru_s1 e9_gru_s2 e9_gru_s3
+python scripts\07_calibrate.py --run e9_ens_gru
+python scripts\08_evaluate.py --model e9_ens_gru --split val
+
+# 9. Live demo (skeleton on black, never the camera image; q quits, r resets)
+python scripts\09_live.py --list-cameras                 # pick the camera that sees the room
+python scripts\09_live.py --run e9_ens_gru --camera 0    # frozen model, its thresholds.yaml
+python scripts\09_live.py --run e9_ens_gru --video clip.mp4 --no-display   # replay any video
+python scripts\09_live.py --run e9_ens_gru --record logs\live\dry_run_1     # keep skeleton/scores/alerts
+
+# 10. Tests and lint
 python -m pytest -q
 ruff format --check . ; ruff check .
 ```
+
+The live demo runs the same code path as evaluation (replaying val clips through `09_live.py` reproduces the offline scores to 1e-4). The camera must see the whole body: a seated close-up on a laptop camera hides the hips and legs, and the model, trained on full-body views, then reads the pose as ambiguous (the display says "full body not in view").
 
 Typical times on the larger laptop: QC of all 6,802 clips about 10 s; building every window file under a minute; one training run on the core sets about 3 minutes; one evaluation about 15 s.
 
