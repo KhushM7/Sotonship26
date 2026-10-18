@@ -1,0 +1,12 @@
+# fallsense server on AWS (scripts/aws.ps1): only what 11_serve.py imports, pinned to
+# the versions the laptop runs. torch is installed separately from the CPU-only index
+# (fallsense.calibrate imports it; no model runs in the server).
+fastapi==0.143.3
+starlette==1.8.0
+pydantic==2.14.1
+uvicorn[standard]==0.54.0
+httpx==0.28.1
+numpy==2.4.6
+pandas==3.0.6
+pyarrow==26.0.0
+pyyaml==6.0.3
