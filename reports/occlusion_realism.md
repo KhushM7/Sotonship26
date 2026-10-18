@@ -74,4 +74,27 @@ Decision (17 Oct 2026): the simulation is accepted as it is and judged by experi
 
 ## E7 outcome
 
-_To be filled in by Dev B when E7 runs (see the E7 row in the plans): val results with and without simulated occlusion on all of val, OCCU val, and false alerts per hour elsewhere; the run names; and whether E7 is kept. Copy the same numbers into `reports/experiments.csv`._
+Ran on Laptop A, 17 Oct 2026, from clean commit `760f123`, val only. Base: E5 GRU, the best of E4/E5 (core + OCCU + OF-Syn, `--augment`). E7 = the same config plus `--occlude`. Three seeds each; mean (min–max). Numbers are from `reports/eval/summary_val.md` and the per-dataset rows of `eval_<run>_val.json`.
+
+| Val metric | E5 GRU (no occlusion) | E7 GRU (`--occlude`) |
+| --- | --- | --- |
+| All of val: fewest false FALL / h at ≥ 75% FALL sensitivity (primary) | 44.0 (37.3–50.6) | 49.7 (48.0–52.0) |
+| All of val: FALL sensitivity at the calibrated threshold | 85.9% (84.0–89.6%) | 84.5% (81.9–87.5%) |
+| All of val: false FALL / h at the calibrated threshold | 99.9 (89.3–113.2) | 78.6 (69.3–83.9) |
+| OCCU val FALL sensitivity (16 falls) | 37.5% (37.5–37.5%) | 41.7% (37.5–50.0%) |
+| False FALL / h outside OCCU: core sets (GMDCSA24, CAUCAFall, Le2i) | 121.6 (116.1–132.7) | 96.8 (74.6–124.4) |
+| False FALL / h outside OCCU: OF-Syn | 96.0 (83.2–109.8) | 74.9 (66.6–83.2) |
+| OF-Syn / elderly FALL sensitivity | 91.1% / 90.7% | 87.4% / 82.7% |
+| Window AP (falling, all val) | 0.81 | 0.81 |
+
+Runs: `e5_gru_s1`, `e5_gru_s2`, `e5_gru_s3` (base); `e7_gru_s1`, `e7_gru_s2`, `e7_gru_s3` (E7).
+
+**Decision: E7 dropped ("no clear gain"); the final config stays E5 GRU without simulated occlusion.** The rule was to keep occlusion only if OCCU or hidden-fall sensitivity rises by more than the seed spread, and false alerts elsewhere don't rise by more than the spread.
+
+- The OCCU gain is +4.2 points on the mean, and all of it comes from one seed: `e7_gru_s2` catches 8 of the 16 OCCU val falls, while s1 and s3 catch 6, the same as every E5 seed. One fall is 6.25 points, so this isn't a clear rise. The base has zero spread on OCCU, so a strict "mean above the base range" reading would have kept E7. This is a judgement call, recorded as such.
+- False alerts elsewhere did not rise: the second condition holds. At the calibrated thresholds, E7 gives fewer false alerts on the core sets and OF-Syn, at slightly lower sensitivity. At equal sensitivity (the primary number), it is no better: 49.7 against 44.0, with overlapping ranges. So simulated occlusion moves the operating point; it does not improve the trade-off.
+- Elderly sensitivity fell by 8 points (ranges overlap).
+- The eval reports have no hidden-fall breakdown, so OCCU val stands in for hidden falls. OCCU test and the staged hidden-fall clips were not opened: val only.
+
+E7 doesn't help on OCCU val, so the "revisit" notes under "Status" above apply. In particular, simulated falls vanish at a lower hip speed than real OCCU ones. The starting points are `RISE_EDGE_IN_DROP`, `MIN_DROP` and the `hips_hidden` loss rule in `src/fallsense/occlusion.py`. OCCU val sensitivity also fell when OF-Syn was added (E4 GRU 47.9% → E5 GRU 37.5%), and that's the bigger loss to recover. The E7 rows are in `reports/experiments.csv` (`e7_gru`).
+
