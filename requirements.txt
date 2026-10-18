@@ -16,3 +16,7 @@ mypy
 pandas-stubs
 types-PyYAML
 types-tqdm
+# fallsense server (scripts/11_serve.py) and the web app
+fastapi
+uvicorn[standard]
+httpx

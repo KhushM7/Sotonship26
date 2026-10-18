@@ -28,7 +28,7 @@ pins:
 
 # the backend run whose stored scores and thresholds drive the replay rooms;
 # a better model later is a change here only
-model_run: e5_gru_s1
+model_run: e9_ens_gru
 scores_split: val
 
 escalation:

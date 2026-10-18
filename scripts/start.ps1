@@ -12,8 +12,10 @@ $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
 
 if (-not $env:FALL_DATA) { $env:FALL_DATA = "C:\fall-data" }
-if (-not $env:FALLSENSE_BACKEND) { $env:FALLSENSE_BACKEND = (Resolve-Path "$root\..\Sotonship26").Path }
 $env:PYTHONUNBUFFERED = "1"
+
+# the video under each skeleton: fetch/transcode anything missing (quick once done)
+& "$root\.venv\Scripts\python.exe" scripts\13_demo_videos.py
 
 if ($Build -or -not (Test-Path "$root\frontend\dist\index.html")) {
     Push-Location "$root\frontend"
