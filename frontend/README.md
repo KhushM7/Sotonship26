@@ -59,6 +59,10 @@ network (`public_url: auto`).
 
 ## Deployed: one address for everything
 
+Day to day, start it with `.\scripts\start.ps1` (add `-Build` after pulling changes).
+It sets `FALL_DATA` / `FALLSENSE_BACKEND` defaults, builds the web app if needed and
+starts the server and tunnel. Keep the laptop plugged in and stop it sleeping.
+
 Set in `configs/server.local.yaml`: `tunnel: true`, `trust_localhost: false`, your own
 `pins`, and for a fixed address a named tunnel (`tunnel_token` from Cloudflare Zero
 Trust → Networks → Tunnels, public hostname → `http://localhost:8000`, plus
