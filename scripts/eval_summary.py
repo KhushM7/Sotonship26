@@ -8,7 +8,9 @@ scores. Adds two threshold-free numbers, because seeds land at different points 
 the sensitivity / false-alert trade-off at a fixed threshold:
 - window AP for falling-vs-rest (the training selection metric);
 - the best operating point: lowest false FALL alerts/h among FALL thresholds that
-  keep FALL sensitivity >= --target (sweep 0.05-0.95).
+  keep FALL sensitivity >= --target (sweep 0.05-0.95), on all of val and on the
+  real core sets alone (val is mostly OF-Syn, so the all-val number mostly
+  measures synthetic clips).
 Writes reports/eval/summary_<split>.md and .csv.
 """
 
@@ -94,6 +96,7 @@ def main() -> None:
         window_ap = average_precision_score(m["y"] == windows.FALLING, m["p_falling"])
         t, s, f = best_point(sc, clips, events, args.target)
         cc, ce, cs = core_events(clips, events, sc)
+        _, core_best_s, core_best_f = best_point(cs, cc, ce, args.target)
         core = metrics.summarise(
             *metrics.match_events(cc, ce, alerts_from_scores(cs, rep["thresholds"]))
         )
@@ -121,6 +124,8 @@ def main() -> None:
                 "best_t": t,
                 "best_sens": s,
                 "best_false_per_h": f,
+                "core_best_sens": core_best_s,
+                "core_best_false_per_h": core_best_f,
             }
         )
         print(
@@ -161,9 +166,10 @@ def write_md(per_run, per_exp, seeds, args, _first, clips, events) -> None:
         (
             "| Experiment | Seeds | Window AP (falling) | Macro F1 | Sens. FALL | False FALL / h "
             "| Core sens. | Core false / h | OF-Syn sens. | Elderly sens. | OCCU sens. "
-            f"| Fewest false / h at ≥ {args.target:.0%} sens. |"
+            f"| Fewest false / h at ≥ {args.target:.0%} sens. "
+            f"| Core: fewest false / h at ≥ {args.target:.0%} sens. |"
         ),
-        "| --- " * 12 + "|",
+        "| --- " * 13 + "|",
     ]
 
     def cell(exp, col, f):
@@ -177,7 +183,8 @@ def write_md(per_run, per_exp, seeds, args, _first, clips, events) -> None:
             f"{cell(exp, 'false_per_h', num)} | {cell(exp, 'core_sens_fall', pct)} | "
             f"{cell(exp, 'core_false_per_h', num)} | {cell(exp, 'ofsyn_sens_fall', pct)} | "
             f"{cell(exp, 'elderly_sens_fall', pct)} | {cell(exp, 'occu_sens_fall', pct)} | "
-            f"{cell(exp, 'best_false_per_h', num)} |"
+            f"{cell(exp, 'best_false_per_h', num)} | "
+            f"{cell(exp, 'core_best_false_per_h', num)} |"
         )
     lines += [
         "",
