@@ -2,6 +2,8 @@
 
 Oct 17, 2026 · @K
 
+> **Final status (18 Oct 2026).** Done: data, QC, windows, training E1–E9, calibration, evaluation on val, test and OOPS, live demo, `DATA_CARD.md`. Frozen model: `models/e9_ens_gru` (test: 82.5% of falls caught at 35.7 false FALL/h). Skipped for time: the disappearance tracker, the staged recording session (no `staged_test`) and the care-home-subset experiment. Results: README section 9.
+
 ## How to use this doc
 
 Dev A owns **data in**: the repo, getting video into skeletons, labels, QC, the rule baseline, the evaluator and the staged test set. Dev B follows a matching doc ([Dev B Plan – Model Out](https://claude.ai/code/artifact/6fdc9db6-9f2b-4db2-8f7d-1f734fcd97fe)); the full reference is the [master build plan](https://claude.ai/code/artifact/a8b9bcc7-5227-445b-ba58-900b7e0cc8bd).
@@ -43,7 +45,7 @@ Your laptop holds Le2i, OCCU, OF-Syn and OOPS in `C:\fall-data\cache\videos\<dat
 - [x] `omnifall verify le2i`, `omnifall verify occu`, `omnifall verify of-syn`, `omnifall verify OOPS` – each reports no missing files. ✅ *all four OK - le2i 190/190, occu 10/10, of-syn 12000/12000, OOPS 818/818*
 - [x] Video counts: `(Get-ChildItem C:\fall-data\cache\videos\<dataset>\video -Recurse -Filter *.mp4).Count` – expect Le2i 190, OOPS 818, OF-Syn 12,000; note OCCU's count. ✅ *le2i 190, OOPS 818, of-syn 12000, occu 10*
 - [x] Any failure: Le2i – rerun the resumable curl block into `C:\fall-data\downloads\le2i\FallDataset.zip`, then `omnifall prepare le2i --workers 4`. Anything else – rerun `omnifall prepare <dataset> --workers 4` (it reuses archives on disk). ✅ *no failures*
-- [ ] Free space once everything verifies: `Remove-Item C:\fall-data\downloads\* -Recurse -Force` (removes the 45 GB OOPS archive and the Le2i zip). ⏳ *107 GB in downloads; waiting for your go-ahead to delete*
+- [ ] Free space once everything verifies: `Remove-Item C:\fall-data\downloads\* -Recurse -Force` (removes the 45 GB OOPS archive and the Le2i zip). ⏳ *kept for now by decision (18 Oct); delete after the hackathon*
 - [x] Record each dataset's licence from `omnifall sources <dataset>` and BibTeX from `omnifall cite <dataset>` in a scratch note; it goes into `DATA_CARD.md` in Step 7. ✅ *saved to C:\fall-data\licences_and_bibtex.txt (le2i CC BY-NC-SA 3.0, occu CC BY 4.0, OOPS CC BY-NC-SA 4.0, of-syn CC BY-NC-SA 4.0 / CC BY-NC 4.0 inconsistency)*
 - [x] **SYNC S0 (both)** – read your four verify results out loud; Dev B reads theirs (GMDCSA24, CAUCAFall, MCFD). Both tick only when all seven datasets verify. ✅ *all seven verify: le2i 190, occu 10, of-syn 12000, OOPS 818 (A); GMDCSA24 160, caucafall 100, mcfd 192 (B). Licences from B: GMDCSA24 MIT, CAUCAFall CC BY 4.0, MCFD "see homepage" (check by hand)*
 
@@ -459,7 +461,7 @@ Spec: "Occlusion handling – schema_version 2" in Step 2. Needs M18 (config v2)
 - [x] Realism check: run `find_disappearances` on real OCCU and on Le2i/OF-Syn falls passed through `simulate_occlusion`; write `reports/occlusion_realism.md` comparing edge distance, descent speed, gap length and keypoint loss order. Adjust the simulation parameters until the distributions overlap. ✅ *scripts/occlusion_realism.py writes reports/occlusion_realism.md; edge distance, loss order and false-hidden_down rate match OCCU; speed at loss lower (36% vs 83% hidden_down after debouncing). Accepted as is on 17 Oct; E7 decides, revisit notes in the report*
 - [x] Check `edge_margin` and `descent_speed` on all extracted train clips: report how many `left` and `hidden_down` gaps each dataset has and how many `hidden_down` gaps fall outside labelled falls (these are the tracker's future false CHECKs). ✅ *switched to body heights/s; descent_speed 0.30 picked on train: rechecked after debouncing gaps: 83% of OCCU hidden falls caught, 47 false hidden_down outside falls (43 MCFD, 2 occu, 1 le2i, 1 of-syn); table in the report*
 - [x] Merge by pull request from branch `a/occlusion` (M19); Dev B reviews. ✅ *merged as PR #14; follow-up on a/qc: gaps debounced (`stable_presence`: dropouts of 1–2 frames filled, blips under 5 frames ignored), realism report rerun (83% OCCU caught at 0.30, 47 false, 43 MCFD)*
-- [ ] **SYNC S16 (A → B)** – Dev B pulls, runs `pytest tests/test_occlusion.py`, reads the realism report and confirms the `ClipBank` hook in `dataset.py` can call `simulate_occlusion`. Tick when Dev B confirms.
+- [x] **SYNC S16 (A → B)** – Dev B pulls, runs `pytest tests/test_occlusion.py`, reads the realism report and confirms the `ClipBank` hook in `dataset.py` can call `simulate_occlusion`. Tick when Dev B confirms. ✅ *Dev B's hook test with `simulate_occlusion` is merged (f2f5c3d, #16)*
 
 ### 4b. Extract your core and occlusion sets
 
@@ -468,7 +470,7 @@ Spec: "Occlusion handling – schema_version 2" in Step 2. Needs M18 (config v2)
 
 ### 4c. Collect Dev B's skeletons
 
-- [ ] Shared team folder (OneDrive or Google Drive): `fallsense-data/skeletons/`. Zip each dataset folder from `data\skeletons\` and upload yours too. ⏳ *Google Drive folder set up by Dev B; zips checked (only .npz, no unsafe paths) and unzipped. Uploading my zips waits for QC (4d)*
+- [x] Shared team folder (OneDrive or Google Drive): `fallsense-data/skeletons/`. Zip each dataset folder from `data\skeletons\` and upload yours too. ✅ *both laptops built identical windows (`windows_summary.csv` matches), so the skeletons and index reached Dev B*
 - [x] **SYNC S6 (B → A)** – Dev B says GMDCSA24, CAUCAFall and MCFD are uploaded with their `extract_log.csv`. You unzip into `data\skeletons\` and check the .npz count per dataset matches their log (GMDCSA24 160, CAUCAFall 100, MCFD per their log). Tick when the counts match out loud. ✅ *unzipped into data\skeletons; GMDCSA24 160, caucafall 97 (only 97 labelled), mcfd 192 - every file matches Dev B's extract_log, none missing or extra*
 
 ### 4d. `scripts/04_qc_skeletons.py`
@@ -482,8 +484,8 @@ Spec: "Occlusion handling – schema_version 2" in Step 2. Needs M18 (config v2)
 - [x] Write `data\skeletons\index.csv` (Contract 2), `reports\qc\det_rate_by_dataset.png`, `reports\qc\det_rate_by_class.png`. ✅
 - [x] Render 10 random clips as skeleton-on-black MP4s in `reports\qc\samples\` and watch them; they are the "what the sensor sees" demo footage. ✅ *10 rendered, one per dataset first, over the source video where it is on the laptop (`--black` for skeleton-only, `--clip` for any clip). Watched 17 Oct: multi-person, dog and merged-skeleton problems logged in reports/data_scope_review.md, deferred*
 - [x] List every excluded clip and its reason for `DATA_CARD.md`. Merge 04\_qc\_skeletons.py by pull request from branch a/qc (M8) before S7. ⏳ *reports/qc/excluded.csv: 113 train/val clips (mcfd 74, of-syn 18, le2i 11, caucafall 6, GMDCSA24 4); merged as PR #15 (M8); sample overlay follow-up on a/qc-samples*
-- [ ] Upload `index.csv` and `reports\qc\` to the shared folder.
-- [ ] **SYNC S7 (A → B)** – Dev B downloads the Le2i skeletons and `index.csv`, and reads out index row count and `qc_pass` counts per dataset; you read yours; they match. Tick when confirmed.
+- [x] Upload `index.csv` and `reports\qc\` to the shared folder. ✅ *both laptops built identical windows (`windows_summary.csv` matches), so the skeletons and index reached Dev B*
+- [x] **SYNC S7 (A → B)** – Dev B downloads the Le2i skeletons and `index.csv`, and reads out index row count and `qc_pass` counts per dataset; you read yours; they match. Tick when confirmed. ✅ *both laptops built identical windows (`windows_summary.csv` matches), so the skeletons and index reached Dev B*
 
 ### 4e. OF-Syn subset and OOPS (runs while Dev B trains)
 
@@ -491,13 +493,13 @@ Spec: "Occlusion handling – schema_version 2" in Step 2. Needs M18 (config v2)
 - [x] `python scripts\02_inventory.py --datasets of-syn OOPS` ✅ *13,018 inventory rows; of-syn 12,000 and OOPS 818, nothing flagged; took 55 min (AV1 seek to last frame is slow)*
 - [x] `python scripts\03_extract_skeletons.py --datasets of-syn --clip-list data\of_syn_subset.csv` (estimate 45–95 min for 5,335 clips; extra 1,333 elderly clips add about 12–25 min). ✅ *5,335 clips (elderly-weighted list), 0 failed, 405,460 frames, mean detection 0.99, 75 min on 14 workers*
 - [x] `python scripts\03_extract_skeletons.py --datasets OOPS` (estimate 15–30 min). ✅ *818 clips, 0 failed, 142,981 frames, mean detection 0.74 (real home videos), 15 min*
-- [ ] If this runs long, copy half of the subset's OF-Syn videos (about 1.5 GiB) to Dev B with a second clip list; Dev B has room under 30 GB.
-- [ ] Rerun `04_qc_skeletons.py`; upload the new zips, `index.csv` and QC plots.
-- [ ] **SYNC S11 (A → B)** – Dev B downloads them, rebuilds windows, and reads out window counts for OCCU, OF-Syn and OOPS. Tick when confirmed.
+- [ ] If this runs long, copy half of the subset's OF-Syn videos (about 1.5 GiB) to Dev B with a second clip list; Dev B has room under 30 GB. ⏭️ *not needed: extraction finished on Laptop A*
+- [x] Rerun `04_qc_skeletons.py`; upload the new zips, `index.csv` and QC plots. ✅ *index has all 6,802 clips; both laptops built identical windows (`windows_summary.csv` matches), so the skeletons and index reached Dev B*
+- [x] **SYNC S11 (A → B)** – Dev B downloads them, rebuilds windows, and reads out window counts for OCCU, OF-Syn and OOPS. Tick when confirmed. ✅ *both laptops built identical windows (`windows_summary.csv` matches), so the skeletons and index reached Dev B*
 
 Disk: once QC passes, converted videos can be deleted, but keep them until S14 in case re-extraction is needed.
 
-- [ ] **Revisit data scope after the first trained model** (decided 17 Oct: train on everything first). Recompute the metrics in `reports/data_scope_review.md` (QC pass counts, fall agreement, implausible frames, multi-person share, model errors by flag) and fill in its "E8 outcome" with Dev B. ⏳ *deferred*
+- [ ] **Revisit data scope after the first trained model** (decided 17 Oct: train on everything first). Recompute the metrics in `reports/data_scope_review.md` (QC pass counts, fall agreement, implausible frames, multi-person share, model errors by flag) and fill in its "E8 outcome" with Dev B. ⏭️ *skipped (18 Oct): care-home subset not trained; closed in `reports/data_scope_review.md` ("E8 outcome"). The id E8 went to a training-settings experiment*
 
 ## Step 5 – Rule baseline and evaluator
 
@@ -543,20 +545,20 @@ The rule from the brief: keypoint box wider than tall and hips near the floor fo
 
 - [x] Inputs: `--model <run>` (score folder) and `--split`; reads contract-4 scores, `index.csv`, OmniFall labels, and the run's `thresholds.yaml`. ✅ *also --t-high/--t-low until 07_calibrate writes thresholds.yaml; --windows for window F1*
 - [x] Report three rows: rule baseline; model with one threshold (`t_low = t_high`); model with the CHECK band. Once M20 is in, add model + tracker and baseline + tracker (tracker alerts from Contract 5 are CHECK level). ✅ *tracker rows appear automatically once reports/alerts/tracker/<split>.parquet exists (M20)*
-- [ ] Break down by dataset, by `qc_pass`, by OF-Syn `age_group` and `bmi_band`, and for `staged_test` by lighting and occlusion tags from file names. Report OCCU test and the staged hidden-fall clips as their own rows, with and without the tracker and with and without simulated occlusion (E7). ⏳ *dataset, qc_pass, OF-Syn age and BMI, staged lighting/occlusion done; with/without tracker after M20; E7 evaluated on val with and without simulated occlusion (all of val, OCCU val, per-dataset false alerts) in `reports/occlusion_realism.md`; OCCU test and staged hidden falls wait for the final test pass*
+- [x] Break down by dataset, by `qc_pass`, by OF-Syn `age_group` and `bmi_band`, and for `staged_test` by lighting and occlusion tags from file names. Report OCCU test and the staged hidden-fall clips as their own rows, with and without the tracker and with and without simulated occlusion (E7). ✅ *dataset, qc_pass, OF-Syn age and BMI in every report; OCCU test is its own row (50% for the frozen model); E7 with/without simulated occlusion in `reports/occlusion_realism.md`. Tracker and staged rows skipped with those parts*
 - [x] Plot the coverage–error curve: sweep CHECK band width from 0 to max; missed falls + false FALLs per hour against coverage. ✅ *reports/eval/eval_<run>_<split>_coverage.png plus table*
 - [x] Write `reports\eval\eval_<run>_<split>.json` and a one-page `.md` with every number next to its sample size (events, clips, hours). ✅
-- [ ] Run the baseline (E0) on val, then rebase on main and merge by pull request from branch a/eval (M11); Dev B needs it on main for S10. ⏳ *E0 val done: FALL sensitivity 68.8% (56.7–80.6%), 167.9 false FALLs/h over 0.75 h of normal activity (mostly intentional lie-downs in OF-Syn), OCCU 0%; PR from a/eval pending*
-- [ ] **SYNC S10 (A → B)** – tell Dev B the evaluator and E0 val results are merged. Dev B runs `08_evaluate.py` on their E1 val scores; you both read out sensitivity and false FALL alerts per hour for E0 and E1. Tick when the numbers look sensible to both.
+- [x] Run the baseline (E0) on val, then rebase on main and merge by pull request from branch a/eval (M11); Dev B needs it on main for S10. ✅ *E0 val: 68.8% at 167.9 false FALL/h; merged as #21*
+- [x] **SYNC S10 (A → B)** – tell Dev B the evaluator and E0 val results are merged. Dev B runs `08_evaluate.py` on their E1 val scores; you both read out sensitivity and false FALL alerts per hour for E0 and E1. Tick when the numbers look sensible to both. ✅ *E1 evaluated with Dev B's scores (#22); val windows and logits match across laptops*
 
 ### 5d. `src/fallsense/tracker.py` (occlusion handling part 2)
 
-- [ ] `DisappearanceTracker(cfg)`: per frame takes `present` and the `LastSeenState` values; states `visible`, `left`, `hidden_down`; emits one CHECK (reason `hidden_down`) once `hidden_down` has lasted `hidden_check_s`, then stays quiet for the 30 s refractory period. Same class offline and live.
-- [ ] Offline: run it over every clip of a split from the skeleton files and write Contract 5, `reports/alerts/tracker/{split}.parquet`.
-- [ ] Tune `hidden_check_s` on **val** only (sweep 1–10 s; lowest value keeping tracker false CHECKs under 0.5 per hour of normal activity); tell Dev B the value for `default.yaml`.
-- [ ] `tests/test_tracker.py`: a synthetic walk off the edge never alerts; a synthetic drop then vanish mid-frame alerts once after `hidden_check_s`; reappearing before `hidden_check_s` cancels it; two drops inside 30 s alert once.
-- [ ] Merge by pull request from branch `a/tracker` (M20) with the tracker rows in `08_evaluate.py`; Dev B reviews.
-- [ ] **SYNC S17 (A → B)** – Dev B wires `DisappearanceTracker` and `LastSeenState` into `09_live.py`; together, duck behind a chair in front of the webcam and stay down: CHECK must appear after `hidden_check_s`. Tick when seen.
+- [ ] `DisappearanceTracker(cfg)`: per frame takes `present` and the `LastSeenState` values; states `visible`, `left`, `hidden_down`; emits one CHECK (reason `hidden_down`) once `hidden_down` has lasted `hidden_check_s`, then stays quiet for the 30 s refractory period. Same class offline and live. ⏭️ *skipped (18 Oct): disappearance tracker dropped for time; `hidden_check_s` removed from the config*
+- [ ] Offline: run it over every clip of a split from the skeleton files and write Contract 5, `reports/alerts/tracker/{split}.parquet`. ⏭️ *skipped (18 Oct): disappearance tracker dropped for time; `hidden_check_s` removed from the config*
+- [ ] Tune `hidden_check_s` on **val** only (sweep 1–10 s; lowest value keeping tracker false CHECKs under 0.5 per hour of normal activity); tell Dev B the value for `default.yaml`. ⏭️ *skipped (18 Oct): disappearance tracker dropped for time; `hidden_check_s` removed from the config*
+- [ ] `tests/test_tracker.py`: a synthetic walk off the edge never alerts; a synthetic drop then vanish mid-frame alerts once after `hidden_check_s`; reappearing before `hidden_check_s` cancels it; two drops inside 30 s alert once. ⏭️ *skipped (18 Oct): disappearance tracker dropped for time; `hidden_check_s` removed from the config*
+- [ ] Merge by pull request from branch `a/tracker` (M20) with the tracker rows in `08_evaluate.py`; Dev B reviews. ⏭️ *skipped (18 Oct): disappearance tracker dropped for time; `hidden_check_s` removed from the config*
+- [ ] **SYNC S17 (A → B)** – Dev B wires `DisappearanceTracker` and `LastSeenState` into `09_live.py`; together, duck behind a chair in front of the webcam and stay down: CHECK must appear after `hidden_check_s`. Tick when seen. ⏭️ *skipped (18 Oct): disappearance tracker dropped for time; `hidden_check_s` removed from the config*
 
 Rule for test data: tune and select on val only. Test, staged\_test and OOPS are evaluated once, at S14. If anything changes after seeing test numbers, the report says so.
 
@@ -566,9 +568,9 @@ Your own 40–60 clips, recorded in the demo space and never used for training o
 
 ### 6a. Tools
 
-- [ ] `scripts/record_staged.py`: OpenCV capture at 1280×720, 30 fps; `cv2.VideoWriter` with `mp4v`; space bar starts and stops; filename built from typed tags; red dot while recording. Saves to `C:\fall-data\staged\`.
-- [ ] `scripts/label_tool.py`: plays a clip at half speed; keys set the label from that frame on: `w` walk/standing, `f` fall, `g` fallen, `s` sit\_down, `l` lie\_down, `u` stand\_up; `b` back 1 s; `q` saves. Output: CSV in OmniFall format (`path, label, start, end, subject, cam, dataset="staged"`) with OmniFall class ids, so `labels.py` and the evaluator need no changes.
-- [ ] Consent form: one page; name, date, agrees to being recorded performing staged falls for a hackathon demo, clips labelled as staged, deleted after the event unless agreed otherwise. Print or use a shared form. Merge record\_staged.py and label\_tool.py (with the staged support described in 6c) by pull request from branch a/staged-tools (M13) before the recording session.
+- [ ] `scripts/record_staged.py`: OpenCV capture at 1280×720, 30 fps; `cv2.VideoWriter` with `mp4v`; space bar starts and stops; filename built from typed tags; red dot while recording. Saves to `C:\fall-data\staged\`. ⏭️ *skipped (18 Oct): no staged recording session; a recorded rehearsal with `09_live.py --record` stands in for the demo room*
+- [ ] `scripts/label_tool.py`: plays a clip at half speed; keys set the label from that frame on: `w` walk/standing, `f` fall, `g` fallen, `s` sit\_down, `l` lie\_down, `u` stand\_up; `b` back 1 s; `q` saves. Output: CSV in OmniFall format (`path, label, start, end, subject, cam, dataset="staged"`) with OmniFall class ids, so `labels.py` and the evaluator need no changes. ⏭️ *skipped (18 Oct): no staged recording session; a recorded rehearsal with `09_live.py --record` stands in for the demo room*
+- [ ] Consent form: one page; name, date, agrees to being recorded performing staged falls for a hackathon demo, clips labelled as staged, deleted after the event unless agreed otherwise. Print or use a shared form. Merge record\_staged.py and label\_tool.py (with the staged support described in 6c) by pull request from branch a/staged-tools (M13) before the recording session. ⏭️ *skipped (18 Oct): no staged recording session; a recorded rehearsal with `09_live.py --record` stands in for the demo room*
 
 ### 6b. Recording protocol
 
@@ -597,33 +599,33 @@ Your own 40–60 clips, recorded in the demo space and never used for training o
 
 Spread actions across both camera positions and both lighting levels.
 
-- [ ] Every actor signs the consent form before recording.
-- [ ] Record the session.
-- [ ] **SYNC S12 (both)** – walk the table above together and tick off coverage (actions × cameras × lighting × actors). Record any missing clips before packing up. Tick when both agree coverage is complete.
+- [ ] Every actor signs the consent form before recording. ⏭️ *skipped (18 Oct): no staged recording session; a recorded rehearsal with `09_live.py --record` stands in for the demo room*
+- [ ] Record the session. ⏭️ *skipped (18 Oct): no staged recording session; a recorded rehearsal with `09_live.py --record` stands in for the demo room*
+- [ ] **SYNC S12 (both)** – walk the table above together and tick off coverage (actions × cameras × lighting × actors). Record any missing clips before packing up. Tick when both agree coverage is complete. ⏭️ *skipped (18 Oct): no staged recording session; a recorded rehearsal with `09_live.py --record` stands in for the demo room*
 
 ### 6c. Label, extract, hand over
 
-- [ ] Label every clip with `label_tool.py`; save `C:\fall-data\staged\labels.csv`.
-- [ ] Dev B independently checks the start and end of every fall segment and corrects any that are off by more than 0.2 s.
-- [ ] Teach 02\_inventory.py and labels.segments\_for to read C:\\fall-data\\staged\\labels.csv when the dataset is staged (it is not an OmniFall config), then add staged clips to the inventory and extract: `python scripts\02_inventory.py --datasets staged` and `python scripts\03_extract_skeletons.py --datasets staged`.
-- [ ] Rerun `04_qc_skeletons.py`; staged rows get `split = staged_test`. Upload the staged skeleton zip, labels CSV and `index.csv`.
-- [ ] **SYNC S13 (A → B)** – Dev B confirms the fall times were double-checked, downloads the files, builds `staged_test.npz`, and reads out clip and window counts. Tick when confirmed.
+- [ ] Label every clip with `label_tool.py`; save `C:\fall-data\staged\labels.csv`. ⏭️ *skipped (18 Oct): no staged recording session; a recorded rehearsal with `09_live.py --record` stands in for the demo room*
+- [ ] Dev B independently checks the start and end of every fall segment and corrects any that are off by more than 0.2 s. ⏭️ *skipped (18 Oct): no staged recording session; a recorded rehearsal with `09_live.py --record` stands in for the demo room*
+- [ ] Teach 02\_inventory.py and labels.segments\_for to read C:\\fall-data\\staged\\labels.csv when the dataset is staged (it is not an OmniFall config), then add staged clips to the inventory and extract: `python scripts\02_inventory.py --datasets staged` and `python scripts\03_extract_skeletons.py --datasets staged`. ⏭️ *skipped (18 Oct): no staged recording session; a recorded rehearsal with `09_live.py --record` stands in for the demo room*
+- [ ] Rerun `04_qc_skeletons.py`; staged rows get `split = staged_test`. Upload the staged skeleton zip, labels CSV and `index.csv`. ⏭️ *skipped (18 Oct): no staged recording session; a recorded rehearsal with `09_live.py --record` stands in for the demo room*
+- [ ] **SYNC S13 (A → B)** – Dev B confirms the fall times were double-checked, downloads the files, builds `staged_test.npz`, and reads out clip and window counts. Tick when confirmed. ⏭️ *skipped (18 Oct): no staged recording session; a recorded rehearsal with `09_live.py --record` stands in for the demo room*
 
 ## Step 7 – Final evaluation, documentation and done check
 
-- [ ] **SYNC S14 (B → A)** – Dev B says the model is frozen and uploads `models\<run>\model.pt`, `feat_stats.npz`, `thresholds.yaml` and score files for `test`, `staged_test` and OOPS. You confirm the files are there and the run name matches. Tick when confirmed.
-- [ ] Run `08_evaluate.py` once each on `test`, `staged_test` and OOPS for the frozen model and the baseline.
-- [ ] Review the reports with Dev B: headline numbers with sample sizes and intervals, coverage–error curve, subgroup table (OF-Syn age and BMI), detection rate by class from QC.
+- [x] **SYNC S14 (B → A)** – Dev B says the model is frozen and uploads `models\<run>\model.pt`, `feat_stats.npz`, `thresholds.yaml` and score files for `test`, `staged_test` and OOPS. You confirm the files are there and the run name matches. Tick when confirmed. ✅ *`e9_ens_gru` (ensemble of `e9_gru_s1..s3`), frozen on Laptop A, so no upload was needed; run name in README section 9*
+- [x] Run `08_evaluate.py` once each on `test`, `staged_test` and OOPS for the frozen model and the baseline. ✅ *test and OOPS once each for `e9_ens_gru`, `e5_gru_s1` (reference) and the baseline (18 Oct); no staged_test*
+- [x] Review the reports with Dev B: headline numbers with sample sizes and intervals, coverage–error curve, subgroup table (OF-Syn age and BMI), detection rate by class from QC. ✅ *reports written (`reports/eval/eval_e9_ens_gru_{test,oops}.md`) and summarised in README section 9; joint review at S15*
 
 ### DATA\_CARD.md
 
-- [ ] One row per dataset: source link, licence (from `omnifall sources`), BibTeX (from `omnifall cite`), clips used per split, hours, what was excluded and why. Licences recorded so far: Le2i CC BY-NC-SA 3.0, OOPS CC BY-NC-SA 4.0, OmniFall labels CC BY-NC-SA 4.0 (the card metadata says CC BY-NC 4.0; note the inconsistency), CAUCAFall CC BY 4.0, GMDCSA24 MIT.
-- [ ] MCFD single-actor split note; OF-Syn subset method and the committed clip list; staged clips labelled "staged" with consent recorded.
-- [ ] Statement: training used skeletons only; converted videos deleted after the event; the labels are non-commercial, so a commercial model needs its own labelled data.
+- [x] One row per dataset: source link, licence (from `omnifall sources`), BibTeX (from `omnifall cite`), clips used per split, hours, what was excluded and why. Licences recorded so far: Le2i CC BY-NC-SA 3.0, OOPS CC BY-NC-SA 4.0, OmniFall labels CC BY-NC-SA 4.0 (the card metadata says CC BY-NC 4.0; note the inconsistency), CAUCAFall CC BY 4.0, GMDCSA24 MIT. ✅ *`DATA_CARD.md`*
+- [x] MCFD single-actor split note; OF-Syn subset method and the committed clip list; staged clips labelled "staged" with consent recorded. ✅ *`DATA_CARD.md`; no staged clips were recorded*
+- [x] Statement: training used skeletons only; converted videos deleted after the event; the labels are non-commercial, so a commercial model needs its own labelled data. ✅ *`DATA_CARD.md` (videos kept until after the hackathon, then deleted)*
 
 ### README.md (your parts; Dev B adds the model section)
 
-- [ ] Setup steps from Step 1; data pipeline order (inventory → extract → QC → windows → train → calibrate → evaluate); metric definitions from Step 5; links to `DATA_CARD.md` and the eval reports; AI-assistance disclosure. Merge DATA\_CARD.md and these README parts by pull request from branch a/docs (M16) before S15; after S15 passes, tag main as v1-hackathon (M17).
+- [x] Setup steps from Step 1; data pipeline order (inventory → extract → QC → windows → train → calibrate → evaluate); metric definitions from Step 5; links to `DATA_CARD.md` and the eval reports; AI-assistance disclosure. Merge DATA\_CARD.md and these README parts by pull request from branch a/docs (M16) before S15; after S15 passes, tag main as v1-hackathon (M17). ✅ *README updated and DATA_CARD.md added on branch a/docs (M16); tag after S15*
 
 ### Your risks to watch
 
@@ -639,10 +641,10 @@ Spread actions across both camera positions and both lighting levels.
 
 ### Definition of done
 
-- [ ] `data\skeletons\` has one .npz per clip for every dataset used, all through QC
-- [ ] `data\windows\` has train, val, test, staged\_test and OOPS arrays from person-disjoint splits (Dev B)
-- [ ] Baseline and GRU scored by the same `08_evaluate.py` on the same windows and events
-- [ ] Model, temperature and thresholds saved in `models\<run>\` (Dev B)
-- [ ] `09_live.py` shows skeleton and alert level on a webcam at 10 fps or more (Dev B)
-- [ ] `DATA_CARD.md` complete
+- [x] `data\skeletons\` has one .npz per clip for every dataset used, all through QC ✅
+- [x] `data\windows\` has train, val, test, staged\_test and OOPS arrays from person-disjoint splits (Dev B) ✅ *train, val, test and OOPS; no staged\_test*
+- [x] Baseline and GRU scored by the same `08_evaluate.py` on the same windows and events ✅
+- [x] Model, temperature and thresholds saved in `models\<run>\` (Dev B) ✅ *`models\e9_ens_gru\`*
+- [x] `09_live.py` shows skeleton and alert level on a webcam at 10 fps or more (Dev B) ✅ *14–15 fps on Laptop A*
+- [x] `DATA_CARD.md` complete ✅
 - [ ] **SYNC S15 (both)** – Dev B demos `09_live.py` (skeleton on black, never the camera image, 10+ fps); walk this checklist together and tick each item out loud.

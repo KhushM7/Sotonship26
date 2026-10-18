@@ -1,4 +1,4 @@
-"""Event-level metrics for every system (model, baseline, tracker), README definitions.
+"""Event-level metrics for every system (model, baseline), README definitions.
 
 - Fall event: each OmniFall `fall` segment (16-class label 1, after clean_segments).
 - Detected: an alert between the segment start and 10 s after the segment end.
@@ -53,8 +53,8 @@ RATIOS = {
 def eval_clips(index: pd.DataFrame, split: str) -> pd.DataFrame:
     """Index rows evaluated for `split`, with clip_id = row number in index.csv.
 
-    Same clips as 05_build_windows.py: train/val need qc_pass; test and
-    staged_test keep every clip; `oops` is the test-only datasets.
+    Same clips as 05_build_windows.py: train/val need qc_pass; test keeps
+    every clip; `oops` is the test-only datasets.
     """
     df = index.reset_index(drop=True).rename_axis("clip_id").reset_index()
     test_only = df["dataset"].isin(TEST_ONLY)

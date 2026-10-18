@@ -2,6 +2,8 @@
 
 Oct 17, 2026 · @K
 
+> **Final status (18 Oct 2026).** Done: data, QC, windows, training E1–E9, calibration, evaluation on val, test and OOPS, live demo, `DATA_CARD.md`. Frozen model: `models/e9_ens_gru` (test: 82.5% of falls caught at 35.7 false FALL/h). Skipped for time: the disappearance tracker, the staged recording session (no `staged_test`) and the care-home-subset experiment. Results: README section 9.
+
 ## Goal and scope
 
 The end state is a calibrated skeleton-sequence classifier that labels 2-second windows as upright, falling, fallen or lying/sitting on purpose, beats a rule baseline on held-out people, and runs live on a laptop webcam. Audio, the carer app, escalation and the manager log are out of scope for this plan.
@@ -10,12 +12,12 @@ The pipeline in one line: public fall videos → cleaned 15 fps clips → MediaP
 
 Definition of done:
 
-- [ ] `data/skeletons/` holds one .npz per clip for every dataset we use, all passing QC
-- [ ] `data/windows/` holds train / val / test window arrays built from person-disjoint splits
-- [ ] Rule baseline and GRU both scored by the same `evaluate.py` on the same test windows and events
-- [ ] GRU checkpoint, temperature and two thresholds saved in `models/gru-v1/`
-- [ ] `live.py` shows the skeleton and the alert level on a webcam feed at 10 fps or better on CPU
-- [ ] `DATA_CARD.md` lists every dataset, licence, clip count and what was excluded
+- [x] `data/skeletons/` holds one .npz per clip for every dataset we use, all passing QC ✅
+- [x] `data/windows/` holds train / val / test window arrays built from person-disjoint splits ✅
+- [x] Rule baseline and GRU both scored by the same `evaluate.py` on the same test windows and events ✅ *`08_evaluate.py`*
+- [x] GRU checkpoint, temperature and two thresholds saved in `models/gru-v1/` ✅ *in `models/e9_ens_gru/` (an ensemble of three GRUs)*
+- [x] `live.py` shows the skeleton and the alert level on a webcam feed at 10 fps or better on CPU ✅ *`scripts/09_live.py`, 14–15 fps on CPU*
+- [x] `DATA_CARD.md` lists every dataset, licence, clip count and what was excluded ✅
 
 ## Who owns what
 
