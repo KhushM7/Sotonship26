@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { adoptLinkIdentity, api, identity, setIdentity, type Identity } from "../api";
 import type { Incident } from "../contracts";
 import { clock, levelText, incidentReason, STATE_LABEL, unanswered, urgent } from "../format";
-import { activeIncidents, connect, reconnect, subscribe, useStore } from "../store";
+import { activeIncidents, connect, subscribe, useStore } from "../store";
 import { Button, Label, LevelMark, useNow } from "../ui/bits";
 import { IncidentView } from "../ui/IncidentView";
 import { PinPad } from "../ui/PinPad";
@@ -19,11 +19,10 @@ export function Phone({ path }: { path: string }) {
   const [ackError, setAckError] = useState<string | null>(null);
   const unauthorized = useStore((s) => s.unauthorized);
 
+  // PinPad has already stored the identity and reconnected
   const signIn = (id: Identity | null) => {
-    useStore.setState({ unauthorized: false });
-    setIdentity(id);
+    if (!id) setIdentity(null);
     setMe(id);
-    if (id) reconnect();
   };
   // the server no longer accepts this phone's sign-in (e.g. the shift was reset)
   useEffect(() => {

@@ -3,7 +3,7 @@
     python scripts/09_live.py --run e9_ens_gru                      # webcam 0
     python scripts/09_live.py --run e9_ens_gru --pose lite          # if under 10 fps
     python scripts/09_live.py --run e9_ens_gru --video clip.mp4 --no-display
-    python scripts/09_live.py --run e9_ens_gru --record logs/live/dry_run_1
+    python scripts/09_live.py --run e9_ens_gru --camera 0 --t-low 0.6 --record
 
 Every frame at 15 fps goes through the same code as training and evaluation:
 PoseExtractor -> windows.select_keypoints -> occlusion.LastSeenState ->
@@ -14,8 +14,13 @@ scored every 3 frames (stride_eval), as in val/test, so the alert numbers match.
 The display draws the skeleton on black and never shows the camera image.
 Keys: q or Esc quits, r resets the alert state.
 
---record DIR writes skeleton.npz (Contract 1 layout, so the session can be
-labelled and evaluated later), scores.csv (every scored window) and alerts.csv.
+--record [DIR] writes video.mp4 (the camera frames the model saw, at 15 fps),
+skeleton.npz (Contract 1 layout, so the session can be labelled and evaluated
+later), scores.csv (every scored window), alerts.csv and session.yaml. Without DIR
+it goes to {FALL_DATA}/recordings/<date-time>, where the monitoring wall plays the
+newest session over its video (rooms.yaml `{recording: latest}`). Times in the
+recording count frames from its start, so they match video.mp4 even after `r`.
+The video is only written to disk; the window on screen stays skeleton-only.
 """
 
 import argparse
@@ -24,6 +29,7 @@ import sys
 import time
 from collections import deque
 from collections.abc import Iterator
+from datetime import datetime
 from pathlib import Path
 
 import cv2
@@ -34,7 +40,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src"))
 
 from fallsense import calibrate, windows
-from fallsense.config import load_config
+from fallsense.config import DATA, load_config
 from fallsense.features import make_features
 from fallsense.io_video import iter_frames
 from fallsense.occlusion import LastSeenState
@@ -235,7 +241,14 @@ def main() -> int:
     )
     ap.add_argument("--no-display", action="store_true")
     ap.add_argument("--seconds", type=float, help="stop after this long")
-    ap.add_argument("--record", type=Path, help="folder for skeleton/scores/alerts")
+    ap.add_argument(
+        "--record",
+        type=Path,
+        nargs="?",
+        const=Path("auto"),
+        help="folder for video/skeleton/scores/alerts "
+        "(no value: FALL_DATA/recordings/<date-time>, which the wall picks up)",
+    )
     args = ap.parse_args()
     if args.list_cameras:
         list_cameras()
@@ -271,6 +284,13 @@ def main() -> int:
         wh = (args.width, args.height)
         frames = webcam_frames(args.camera, *wh)
 
+    if args.record == Path("auto"):
+        args.record = DATA / "recordings" / datetime.now().strftime("%Y%m%d-%H%M%S")
+    writer: cv2.VideoWriter | None = None
+    if args.record:
+        args.record.mkdir(parents=True, exist_ok=True)
+        print(f"recording to {args.record}")
+
     pipe = LivePipeline(run_dir, th, on_floor, wh)
     pose_cfg = CFG["pose"]
     rec_kp, rec_det, rec_t, rec_scores, rec_alerts = [], [], [], [], []
@@ -300,15 +320,25 @@ def main() -> int:
                 kp33, _, det = pose(frame, t_ms)
                 kp13, probs, alert = pipe.step(kp33, det)
                 t_s = pipe.i / FPS
+                t_rec = len(rec_t) / FPS  # this frame's time in video.mp4
                 if args.record:
+                    if writer is None:
+                        fh, fw = frame.shape[:2]
+                        writer = cv2.VideoWriter(
+                            str(args.record / "video.mp4"),
+                            cv2.VideoWriter_fourcc(*"mp4v"),
+                            FPS,
+                            (fw, fh),
+                        )
+                    writer.write(frame)
                     rec_kp.append(kp33)
                     rec_det.append(det)
                     rec_t.append(t_ms)
                     if probs is not None:
-                        rec_scores.append((round(t_s, 3), *np.round(probs, 4)))
+                        rec_scores.append((round(t_rec, 3), *np.round(probs, 4)))
                 if alert is not None:
                     banner, banner_until = alert, t_s + BANNER_S
-                    rec_alerts.append((round(t_s, 3), alert[0], round(alert[1], 4)))
+                    rec_alerts.append((round(t_rec, 3), alert[0], round(alert[1], 4)))
                     print(
                         f"{t_s:8.2f} s  {alert[0]:8s} score {alert[1]:.2f}", flush=True
                     )
@@ -339,10 +369,11 @@ def main() -> int:
         except KeyboardInterrupt:
             print("stopped (Ctrl+C)")
     cv2.destroyAllWindows()
+    if writer is not None:
+        writer.release()
 
     if args.record:
         out = args.record
-        out.mkdir(parents=True, exist_ok=True)
         np.savez_compressed(
             out / "skeleton.npz",
             kp=np.stack(rec_kp).astype(np.float32) if rec_kp else np.zeros((0, 33, 4)),

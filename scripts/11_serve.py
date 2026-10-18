@@ -4,8 +4,8 @@
     python scripts/11_serve.py --tunnel        # phones on any network (Cloudflare)
     python scripts/11_serve.py --port 8080
 
-Needs FALL_DATA (skeletons, index.csv) and FALLSENSE_BACKEND (the checkout with
-models/ and reports/scores/; defaults to this repo). Build the web app first:
+Needs FALL_DATA (skeletons, index.csv, videos). Models and scores come from this
+repo (FALLSENSE_BACKEND overrides). Build the web app first:
 cd frontend; npm install; npm run build. Without --tunnel, phones must be on the
 laptop's network and open the "Phones" address printed below; with it, the
 tunnel address is printed (and shown on the wall) a few seconds after start.
@@ -13,8 +13,13 @@ tunnel address is printed (and shown on the wall) a few seconds after start.
 
 import argparse
 import logging
+import sys
+from pathlib import Path
 
 import uvicorn
+
+REPO = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO / "src"))
 
 from fallsense_server.app import create_app
 from fallsense_server.settings import load_settings

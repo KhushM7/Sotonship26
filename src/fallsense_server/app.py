@@ -1,7 +1,9 @@
 """FastAPI app: rooms -> incidents -> phone alerts, and the wall / phone web app.
 
 REST (Contract 7) for carer actions, one WebSocket (Contract 6) for everything
-live. No endpoint returns camera images: rooms only ever hold skeletons.
+live. Rooms hold skeletons; the only images are the source videos of the clips
+(and 09_live.py recordings) they replay, served to signed-in viewers so the wall
+can draw each skeleton over its own video.
 
 Access: this laptop (the nurse station) is trusted. Anyone else, on the hotspot or
 through the Cloudflare tunnel, signs in with the shift PIN and then sends their
@@ -34,6 +36,7 @@ from fallsense_server.notifier import Notifier, Tokens
 from fallsense_server.rooms import ReplayRoom
 from fallsense_server.settings import FRONTEND_DIST, STATE_DIR, Settings, load_settings
 from fallsense_server.tunnel import Tunnel, find_cloudflared
+from fallsense_server.videos import web_video
 
 log = logging.getLogger("fallsense.server")
 SCHEMA_VERSION = 1
@@ -149,6 +152,7 @@ class Server:
     async def start(self) -> None:
         for room in self.rooms.values():
             self.tasks.append(asyncio.create_task(room.run()))
+        self.tasks.append(asyncio.create_task(asyncio.to_thread(self._prepare_videos)))
         self.tasks.append(asyncio.create_task(self._ticker()))
         if self.settings.raw.get("tunnel"):
             self._start_tunnel()
@@ -159,6 +163,13 @@ class Server:
         if self.tunnel is not None:
             self.tunnel.stop()
         await self.notifier.close()
+
+    def _prepare_videos(self) -> None:
+        """Transcode every room's videos up front so none is slow on first view."""
+        for room in self.rooms.values():
+            for clip in list(room.clips.values()):
+                if clip.video:
+                    web_video(clip.ref.dataset, clip.ref.path)
 
     def _start_tunnel(self) -> None:
         raw = self.settings.raw
@@ -498,7 +509,10 @@ def create_app(
         r = srv.rooms.get(room)
         if r is None or name not in r.scenarios:
             raise HTTPException(404, f"no scenario {name} in {room}")
-        r.play_scenario(name)
+        try:
+            r.play_scenario(name)
+        except KeyError as e:
+            raise HTTPException(409, str(e.args[0])) from None
         return {"room": room, "scenario": name}
 
     @app.post("/api/demo/rooms/{room}/offline")
@@ -517,6 +531,25 @@ def create_app(
             r.set_offline(False)
         srv.hub.publish(srv.hello())
         return {"reset": "ok"}
+
+    @app.get("/api/video/{dataset}/{path:path}")
+    def video(dataset: str, path: str, request: Request) -> FileResponse:
+        """A clip's source video (H.264). <video> cannot send headers, so the wall
+        passes its sign-in as ?carer=&token=."""
+        srv.viewer(request)
+        played = {
+            (c.ref.dataset, c.ref.path)
+            for room in srv.rooms.values()
+            for c in room.clips.values()
+        }
+        f = web_video(dataset, path) if (dataset, path) in played else None
+        if f is None:
+            raise HTTPException(404, f"no video for {dataset}/{path}")
+        return FileResponse(
+            f,
+            media_type="video/mp4",
+            headers={"Cache-Control": "private, max-age=86400"},
+        )
 
     # ------------------------------------------------------------ live
 

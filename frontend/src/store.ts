@@ -132,39 +132,58 @@ export function handle(msg: ServerMsg) {
 
 let socket: WebSocket | null = null;
 let wanted = "all";
-
-export function connect(frames = "all") {
-  wanted = frames;
-  if (socket) return;
-  const proto = location.protocol === "https:" ? "wss" : "ws";
-  const open = () => {
-    // phones and the tunnel must be signed in; the laptop needs nothing
-    const q = new URLSearchParams({ frames: wanted, ...(identity() ?? {}) });
-    const ws = new WebSocket(`${proto}://${location.host}/ws?${q}`);
-    socket = ws;
-    ws.onopen = () => {
-      delay = 500;
-      ws.send(JSON.stringify({ type: "subscribe", frames: wanted }));
-      useStore.setState({ connected: true, unauthorized: false });
-    };
-    ws.onmessage = (e) => handle(JSON.parse(e.data) as ServerMsg);
-    ws.onclose = (e) => {
-      useStore.setState({ connected: false, ...(e.code === 4401 ? { unauthorized: true } : {}) });
-      retry = setTimeout(open, delay);
-      delay = Math.min(delay * 2, 5000);
-    };
-  };
-  open();
-}
-
 let delay = 500;
 let retry: ReturnType<typeof setTimeout> | undefined;
 
-/** Reconnect now, e.g. after signing in, instead of waiting for the next retry. */
+/**
+ * One live connection per page. A refusal (code 4401: not signed in) is final until
+ * reconnect() is called after signing in; any other drop retries with backoff. The
+ * page counts as signed in only once the server's hello arrives, so a connection
+ * that opens and is then refused never flips the screen.
+ */
+function open() {
+  clearTimeout(retry);
+  retry = undefined;
+  const proto = location.protocol === "https:" ? "wss" : "ws";
+  const q = new URLSearchParams({ frames: wanted, ...(identity() ?? {}) });
+  const ws = new WebSocket(`${proto}://${location.host}/ws?${q}`);
+  socket = ws;
+  ws.onopen = () => ws.send(JSON.stringify({ type: "subscribe", frames: wanted }));
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data) as ServerMsg;
+    if (msg.type === "hello") {
+      delay = 500;
+      useStore.setState({ connected: true, unauthorized: false });
+    }
+    handle(msg);
+  };
+  ws.onclose = (e) => {
+    if (socket !== ws) return; // replaced by reconnect()
+    socket = null;
+    if (e.code === 4401) {
+      useStore.setState({ connected: false, unauthorized: true });
+      return;
+    }
+    useStore.setState({ connected: false });
+    retry = setTimeout(open, delay);
+    delay = Math.min(delay * 2, 5000);
+  };
+}
+
+export function connect(frames = "all") {
+  wanted = frames;
+  if (!socket && retry === undefined) open();
+}
+
+/** Open a fresh connection now, e.g. with the identity just signed in. */
 export function reconnect() {
   clearTimeout(retry);
-  delay = 0;
-  if (socket && socket.readyState <= WebSocket.OPEN) socket.close();
+  retry = undefined;
+  delay = 500;
+  const old = socket;
+  socket = null;
+  if (old && old.readyState <= WebSocket.OPEN) old.close();
+  open();
 }
 
 /** Change which rooms' skeleton frames this page receives. */

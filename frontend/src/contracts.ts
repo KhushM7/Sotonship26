@@ -72,6 +72,8 @@ export interface RoomStatus {
   online: boolean;
   source: string;
   clip: string | null;
+  /** the clip's source video (see mediaUrl); null = skeleton only */
+  video: string | null;
   scenario: string | null;
   aspect: number;
   fps: number;
@@ -105,6 +107,9 @@ export interface FrameMsg {
   t: number;
   kp: Keypoint[];
   present: boolean;
+  /** the room's video and the seconds into it at this frame */
+  video?: string | null;
+  ct?: number;
 }
 
 export interface ScoresMsg {

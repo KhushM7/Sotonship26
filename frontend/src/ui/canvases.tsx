@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { mediaUrl } from "../api";
 import type { Keypoint, Posture } from "../contracts";
 import { drawSkeleton, fit, sizeCanvas } from "../skeleton";
 import { live, serverNow, useStore } from "../store";
@@ -28,25 +29,100 @@ function lineWidth(boxH: number) {
   return Math.max(1.5, Math.min(4, boxH / 120));
 }
 
-/** The room as the sensor sees it: a skeleton on dark, never the camera image. */
+/**
+ * Keeps a <video> on the clip time the server's frames carry: it plays freely and
+ * is re-seeked only when it drifts, and holds its last frame past the end (a
+ * scenario's held tail).
+ */
+function syncVideo(v: HTMLVideoElement, src: string | null | undefined, t: number | null) {
+  const url = src ? mediaUrl(src) : "";
+  if (v.dataset.src !== url) {
+    v.dataset.src = url;
+    if (url) v.src = url;
+    else v.removeAttribute("src");
+  }
+  if (!url || v.readyState < 1) return;
+  if (t === null) {
+    if (!v.paused) v.pause();
+    return;
+  }
+  const end = v.duration - 0.05;
+  if (t >= end) {
+    if (!v.paused) v.pause();
+    if (Math.abs(v.currentTime - end) > 0.3) v.currentTime = end;
+    return;
+  }
+  if (Math.abs(v.currentTime - t) > 0.3) v.currentTime = t;
+  if (v.paused) v.play().catch(() => undefined);
+}
+
+/** The source frame's aspect: the video's own once loaded, else the server's. */
+function frameAspect(v: HTMLVideoElement | null, fallback: number) {
+  return v && v.readyState >= 1 && v.videoHeight ? v.videoWidth / v.videoHeight : fallback;
+}
+
+function showing(v: HTMLVideoElement | null) {
+  return !!v && !!v.dataset.src && v.readyState >= 2;
+}
+
+/** A skeleton drawn over video gets a dark outline so it reads on any background. */
+function drawOver(
+  ctx: CanvasRenderingContext2D,
+  kp: Keypoint[],
+  box: { x: number; y: number; w: number; h: number },
+  color: string,
+  alpha: number,
+  lw: number,
+  onVideo: boolean,
+) {
+  if (onVideo) drawSkeleton(ctx, kp, box, "#000", alpha * 0.55, lw + 2.5);
+  drawSkeleton(ctx, kp, box, color, alpha, onVideo ? lw + 0.5 : lw);
+}
+
+function RoomVideo({ videoRef }: { videoRef: React.RefObject<HTMLVideoElement | null> }) {
+  return (
+    <video
+      ref={videoRef}
+      muted
+      playsInline
+      preload="auto"
+      className="absolute inset-0 h-full w-full object-contain opacity-0 transition-opacity duration-300"
+      style={{ filter: "brightness(0.78) saturate(0.85)" }}
+      onLoadedData={(e) => (e.currentTarget.style.opacity = "1")}
+      onEmptied={(e) => (e.currentTarget.style.opacity = "0")}
+    />
+  );
+}
+
+/** The room: its camera video with the skeleton the model sees drawn over it. */
 export function LiveSkeleton({ room, tone = "calm", className = "" }: { room: string; tone?: Tone; className?: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
+  const vid = useRef<HTMLVideoElement>(null);
   useAnimationFrame(() => {
     const c = ref.current;
     if (!c) return;
+    const r = live[room];
+    const f = r?.frame;
+    const v = vid.current;
+    if (v) {
+      // frames stop when the camera is cut: freeze the video rather than loop
+      const fresh = f && f.ct !== undefined && serverNow() - f.t < 0.5;
+      syncVideo(v, f?.video, fresh ? f.ct! + Math.max(0, serverNow() - f.t) : null);
+    }
     const { ctx, w, h } = sizeCanvas(c);
     ctx.clearRect(0, 0, w, h);
-    const r = live[room];
-    const aspect = useStore.getState().status[room]?.aspect ?? 16 / 9;
-    const box = fit(w, h, aspect);
-    // the edge of the camera's view, as a hairline
-    ctx.strokeStyle = "rgba(255,255,255,0.05)";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(box.x + 0.5, box.y + 0.5, box.w - 1, box.h - 1);
+    const onVideo = showing(v);
+    const box = fit(w, h, frameAspect(v, useStore.getState().status[room]?.aspect ?? 16 / 9));
+    if (!onVideo) {
+      // the edge of the camera's view, as a hairline
+      ctx.strokeStyle = "rgba(255,255,255,0.05)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(box.x + 0.5, box.y + 0.5, box.w - 1, box.h - 1);
+    }
     if (!r) return;
     const lw = lineWidth(box.h);
-    if (r.frame?.present) {
-      drawSkeleton(ctx, r.frame.kp, box, TONE[tone], 1, lw);
+    if (f?.present) {
+      drawOver(ctx, f.kp, box, TONE[tone], 1, lw, onVideo);
     } else if (r.lastPresent) {
       // last seen: a fading ghost where the person was
       const gone = serverNow() - r.lastPresent.t;
@@ -55,38 +131,55 @@ export function LiveSkeleton({ room, tone = "calm", className = "" }: { room: st
       drawSkeleton(ctx, r.lastPresent.kp, box, TONE.muted, a, lw);
       ctx.setLineDash([]);
     }
-    if (!r.frame?.present) {
+    if (!f?.present) {
       ctx.font = "11px 'Geist Mono Variable', monospace";
       ctx.textAlign = "center";
       ctx.fillStyle = TONE.muted;
       ctx.fillText("OUT OF VIEW", w / 2, h / 2);
     }
   }, [room, tone]);
-  return <canvas ref={ref} className={`block h-full w-full ${className}`} />;
+  const pos = className.includes("absolute") ? "" : "relative h-full w-full";
+  return (
+    <div className={`${pos} ${className}`}>
+      <RoomVideo videoRef={vid} />
+      <canvas ref={ref} className="absolute inset-0 block h-full w-full" />
+    </div>
+  );
 }
 
-type ReplayFrame = { t: number; kp: Keypoint[]; present: boolean };
+type ReplayFrame = { t: number; kp: Keypoint[]; present: boolean; ct?: number; video?: string | null };
 
-/** Loops the seconds before an alert. */
+/** Loops the seconds before an alert, over the video of that moment when there is one. */
 export function ReplaySkeleton({ frames, aspect, fps, className = "" }: { frames: ReplayFrame[]; aspect: number; fps: number; className?: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
+  const vid = useRef<HTMLVideoElement>(null);
   useAnimationFrame(() => {
     const c = ref.current;
     if (!c || !frames.length) return;
-    const { ctx, w, h } = sizeCanvas(c);
-    ctx.clearRect(0, 0, w, h);
-    const box = fit(w, h, aspect);
     const loopS = frames.length / fps + 1.2; // a short pause before it repeats
     const i = Math.floor(((performance.now() / 1000) % loopS) * fps);
     const f = frames[Math.min(i, frames.length - 1)];
-    ctx.strokeStyle = "rgba(255,255,255,0.05)";
-    ctx.strokeRect(box.x + 0.5, box.y + 0.5, box.w - 1, box.h - 1);
-    if (f.present) drawSkeleton(ctx, f.kp, box, TONE.calm, 0.9, lineWidth(box.h));
+    const v = vid.current;
+    if (v) syncVideo(v, f.video, f.ct ?? null);
+    const { ctx, w, h } = sizeCanvas(c);
+    ctx.clearRect(0, 0, w, h);
+    const onVideo = showing(v);
+    const box = fit(w, h, frameAspect(v, aspect));
+    if (!onVideo) {
+      ctx.strokeStyle = "rgba(255,255,255,0.05)";
+      ctx.strokeRect(box.x + 0.5, box.y + 0.5, box.w - 1, box.h - 1);
+    }
+    if (f.present) drawOver(ctx, f.kp, box, TONE.calm, 0.9, lineWidth(box.h), onVideo);
     // progress hairline along the bottom
     ctx.fillStyle = "rgba(255,255,255,0.25)";
     ctx.fillRect(box.x, box.y + box.h - 2, (box.w * Math.min(i, frames.length)) / frames.length, 2);
   }, [frames, aspect, fps]);
-  return <canvas ref={ref} className={`block h-full w-full ${className}`} />;
+  return (
+    <div className={`relative ${className}`}>
+      <RoomVideo videoRef={vid} />
+      <canvas ref={ref} className="absolute inset-0 block h-full w-full" />
+    </div>
+  );
 }
 
 const RIBBON: Record<Posture, string> = {

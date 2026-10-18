@@ -1,5 +1,6 @@
 """Server, carer and room config: configs/*.yaml with configs/server.local.yaml on top."""
 
+import logging
 import os
 import socket
 from dataclasses import dataclass
@@ -8,6 +9,7 @@ from typing import Any
 
 import yaml
 
+log = logging.getLogger("fallsense.settings")
 REPO = Path(__file__).resolve().parents[2]
 CONFIGS = REPO / "configs"
 # incidents.db, alerts.jsonl and the token secret; gitignored
@@ -83,16 +85,17 @@ def lan_ip() -> str:
         s.close()
 
 
-def load_settings() -> Settings:
-    local = _read("server.local.yaml")
+def load_settings(local_overrides: bool = True) -> Settings:
+    """configs/*.yaml; with local_overrides, server.local.yaml on top (off for tests)."""
+    local = _read("server.local.yaml") if local_overrides else {}
     raw = _merge(
         _read("server.yaml"), {k: v for k, v in local.items() if k != "carers"}
     )
     local_carers: dict[str, dict[str, Any]] = local.get("carers", {}) or {}
-    carers = [
-        Carer(**{**c, **local_carers.get(c["name"], {})})
-        for c in _read("carers.yaml").get("carers", [])
-    ]
+    shared = _read("carers.yaml").get("carers", [])
+    carers = [Carer(**{**c, **local_carers.get(c["name"], {})}) for c in shared]
+    for name in set(local_carers) - {c.name for c in carers}:
+        log.warning("server.local.yaml carer %r is not in carers.yaml: ignored", name)
     rooms_cfg = _read("rooms.yaml")
     return Settings(
         raw=raw,

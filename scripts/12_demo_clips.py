@@ -1,27 +1,42 @@
 """Suggest clips for the demo rooms from a run's stored scores (no model run needed).
 
-    python scripts/12_demo_clips.py --run e5_gru_s1 --split val
+    python scripts/12_demo_clips.py --run e9_ens_gru --split val
 
 Prints two lists for configs/rooms.yaml:
 - quiet clips: no alert, low fall score, person seen throughout (background rooms)
 - fall clips: a FALL alert, ending low; with --hold seconds of the last pose kept,
   whether ON FLOOR also fires (the demo's on_floor_seconds_demo)
+
+The video column says where the clip's video is: on this laptop, fetchable by
+13_demo_videos.py (GitHub), or not available (the wall would show the skeleton only).
 """
 
 import argparse
+import sys
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
+REPO = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO / "src"))
+
 from fallsense.calibrate import alerts_from_scores
-from fallsense_server.clips import ClipRef, _index, _scores, load_clip, load_thresholds
+from fallsense_server.clips import (
+    ClipRef,
+    _index,
+    _scores,
+    load_clip,
+    load_thresholds,
+)
+from fallsense_server.videos import source_video
 
 CORE = ["GMDCSA24", "caucafall", "le2i", "mcfd", "occu"]
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--run", default="e5_gru_s1")
+    ap.add_argument("--run", default="e9_ens_gru")
     ap.add_argument("--split", default="val")
     ap.add_argument("--hold", type=float, default=40.0)
     ap.add_argument("--top", type=int, default=12)
@@ -63,7 +78,13 @@ def main() -> None:
 
 
 def _print(df: pd.DataFrame, extra: list[str] | None = None) -> None:
-    cols = ["dataset", "path", "duration_s", "max_falling", *(extra or [])]
+    df = df.assign(
+        video=[
+            "here" if source_video(d, p) else ("GitHub" if d == "GMDCSA24" else "-")
+            for d, p in zip(df["dataset"], df["path"], strict=True)
+        ]
+    )
+    cols = ["dataset", "path", "duration_s", "max_falling", *(extra or []), "video"]
     with pd.option_context("display.width", 200, "display.max_colwidth", 60):
         print(df[cols].round(2).to_string())
 

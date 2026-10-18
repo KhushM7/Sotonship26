@@ -71,6 +71,12 @@ async function post<T>(url: string, body: object = {}): Promise<T> {
   return r.json() as Promise<T>;
 }
 
+/** A media address (<video> cannot send headers) carrying this page's sign-in. */
+export function mediaUrl(path: string) {
+  const me = identity();
+  return me ? `${path}?${new URLSearchParams({ carer: me.carer, token: me.token })}` : path;
+}
+
 async function get(url: string): Promise<Response> {
   const r = await fetch(url, { headers: authHeaders() });
   if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
@@ -100,7 +106,13 @@ export const api = {
   replay: async (id: string) =>
     (await (await get(`/api/incidents/${id}/replay`)).json()) as {
       fps: number;
-      frames: { t: number; kp: ([number, number, number] | null)[]; present: boolean }[];
+      frames: {
+        t: number;
+        kp: ([number, number, number] | null)[];
+        present: boolean;
+        ct?: number;
+        video?: string | null;
+      }[];
     },
   /** The shift's incidents as a CSV file download. */
   exportCsv: async () => {

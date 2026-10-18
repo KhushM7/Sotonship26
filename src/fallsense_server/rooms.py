@@ -2,17 +2,19 @@
 
 Any camera source must produce the same four messages (Contract 6):
 
-    frame   15 Hz  13 keypoints (normalised x, y, visibility; None where lost), present
+    frame   15 Hz  13 keypoints (normalised x, y, visibility; None where lost), present,
+                   video (address or None) and ct = seconds into it, to line them up
     scores   5 Hz  [p_upright, p_falling, p_fallen, p_controlled_low], fall_score, posture
     alert          level, score, reason – decided by the backend, never here
     (status is added by the app)
 
-`ReplayRoom` plays recorded clips with the backend's stored scores and alerts. A
-`LiveRoom` will wrap the backend's live loop (09_live.py) once it exists; nothing
-downstream changes.
+`ReplayRoom` plays recorded clips with the backend's stored scores and alerts, and
+09_live.py recordings (`{recording: latest}`) with the scores and alerts the live
+script decided; nothing downstream can tell them apart.
 """
 
 import asyncio
+import logging
 import time
 from collections import deque
 from collections.abc import Callable
@@ -20,7 +22,9 @@ from typing import Any
 
 import numpy as np
 
-from fallsense_server.clips import FPS, Clip, ClipRef, load_clip
+from fallsense_server.clips import FPS, Clip, ClipRef, clip_exists, load_clip
+
+log = logging.getLogger("fallsense.rooms")
 
 POSTURE = ["upright", "falling", "on_floor", "low_on_purpose"]  # argmax label
 NOT_VISIBLE_S = 1.0  # no skeleton this long -> "not_visible"
@@ -38,9 +42,9 @@ class ReplayRoom:
         self.scenarios = {
             k: ClipRef.from_cfg(d) for k, d in (cfg.get("scenarios") or {}).items()
         }
-        self.clips: dict[ClipRef, Clip] = {
-            ref: load_clip(ref, run) for ref in [*self.idle, *self.scenarios.values()]
-        }
+        self.clips: dict[ClipRef, Clip] = {}
+        for ref in [*self.idle, *self.scenarios.values()]:
+            self._load(ref)
         self.offline = False
         self.ring: deque[dict[str, Any]] = deque(maxlen=round(replay_s * FPS))
         self.clip: Clip | None = None
@@ -57,7 +61,22 @@ class ReplayRoom:
     # ------------------------------------------------------------ control
 
     def play_scenario(self, name: str) -> None:
-        self._start(self.scenarios[name], name)
+        ref = self._load(self.scenarios[name])
+        if ref is None:
+            raise KeyError(f"{name}: nothing recorded yet (09_live.py --record)")
+        self._start(ref, name)
+
+    def _load(self, ref: ClipRef) -> ClipRef | None:
+        """Load a playlist entry once; `recording: latest` picks up new recordings."""
+        res = ref.resolved()
+        if res is None or not clip_exists(res):
+            log.warning(
+                "%s: %s/%s is not available yet", self.id, ref.dataset, ref.path
+            )
+            return None
+        if res not in self.clips:
+            self.clips[res] = load_clip(res, self.model_run)
+        return res
 
     def set_offline(self, on: bool) -> None:
         self.offline = on
@@ -66,8 +85,13 @@ class ReplayRoom:
         if not self.idle:
             self.clip = None
             return
-        self.idle_pos = (self.idle_pos + 1) % len(self.idle)
-        self._start(self.idle[self.idle_pos], None)
+        for _ in range(len(self.idle)):
+            self.idle_pos = (self.idle_pos + 1) % len(self.idle)
+            ref = self._load(self.idle[self.idle_pos])
+            if ref is not None:
+                self._start(ref, None)
+                return
+        self.clip = None
 
     def _start(self, ref: ClipRef, scenario: str | None) -> None:
         self.clip, self.scenario = self.clips[ref], scenario
@@ -130,8 +154,19 @@ class ReplayRoom:
             self.last_seen_at = now
         self.last_frame_at = now
         self.frame_times.append(now)
-        msg = {"type": "frame", "room": self.id, "t": now, "kp": kp, "present": present}
-        self.ring.append({"t": now, "kp": kp, "present": present})
+        ct = round(clip.video_t0 + fi / FPS, 3)
+        msg = {
+            "type": "frame",
+            "room": self.id,
+            "t": now,
+            "kp": kp,
+            "present": present,
+            "ct": ct,
+            "video": clip.video,
+        }
+        self.ring.append(
+            {"t": now, "kp": kp, "present": present, "ct": ct, "video": clip.video}
+        )
         self.emit(msg)
 
     def _emit_scores(self, clip: Clip, wi: int, now: float, ct: float) -> None:
@@ -164,8 +199,9 @@ class ReplayRoom:
         return {
             "room": self.id,
             "online": now - self.last_frame_at < offline_after_s,
-            "source": "replay",
+            "source": "recording" if clip and clip.ref.is_recording else "replay",
             "clip": f"{clip.ref.dataset}/{clip.ref.path}" if clip else None,
+            "video": clip.video if clip else None,
             "scenario": self.scenario,
             "aspect": round(clip.aspect, 4) if clip else 16 / 9,
             "fps": round(fps, 1),

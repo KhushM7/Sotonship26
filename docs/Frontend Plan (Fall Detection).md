@@ -1,6 +1,6 @@
 # Frontend Plan – Monitoring Wall, Carer Alerts and Demo (Fall Detection)
 
-Oct 18, 2026 · @K · branch `frontend/plan` (worktree `../Sotonship26-frontend`, based on `main` at 760f123)
+Oct 18, 2026 · @K · branch `frontend/plan` (based on `main` at 760f123; since merged with `main` and worked on in the main checkout, no separate worktree)
 
 Planning only: no code on this branch yet. The frontend is built on this laptop, in this worktree. Model training and backend work carry on in the main checkout and on their own branches in a separate Claude session. Nothing here edits `main`, `a/*` or `b/*`.
 

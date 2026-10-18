@@ -6,6 +6,9 @@ import { connect, useStore } from "../store";
 import { Button, Label } from "../ui/bits";
 import { RoleSignIn } from "../ui/PinPad";
 
+// "live" plays the newest scripts/09_live.py --record session
+const SCENARIO_LABEL: Record<string, string> = { live: "webcam recording" };
+
 /** /presenter – demo controls; the server only accepts them with the presenter PIN. */
 export function Presenter() {
   const hello = useStore((s) => s.hello);
@@ -31,7 +34,8 @@ export function Presenter() {
       <Label>Presenter</Label>
       <h1 className="mt-2 text-2xl font-medium tracking-tight">Demo controls</h1>
       <p className="mt-2 max-w-[60ch] text-sm leading-relaxed text-ink-400">
-        Scenarios replay recorded clips; their scores and alerts are the backend's own ({hello.model.run}). Phones:{" "}
+        Scenarios replay recorded clips over their videos; their scores and alerts are the backend's own ({hello.model.run}).
+        "webcam recording" plays the newest 09_live.py --record session with the alerts the live script raised. Phones:{" "}
         <span className="font-mono text-ink-200">{hello.public_url}/phone</span>
       </p>
 
@@ -52,8 +56,8 @@ export function Presenter() {
               </div>
               <div className="flex gap-2">
                 {r.scenarios.map((name) => (
-                  <Button key={name} kind="ghost" onClick={run(`${r.name}: ${name}`, () => api.demo.scenario(r.id, name))}>
-                    <PlayIcon /> {name}
+                  <Button key={name} kind="ghost" onClick={run(`${r.name}: ${SCENARIO_LABEL[name] ?? name}`, () => api.demo.scenario(r.id, name))}>
+                    <PlayIcon /> {SCENARIO_LABEL[name] ?? name}
                   </Button>
                 ))}
                 <Button kind="ghost" onClick={run(`${r.name}: camera ${s?.online === false ? "on" : "off"}`, () => api.demo.offline(r.id, s?.online !== false))}>

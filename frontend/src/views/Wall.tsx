@@ -130,8 +130,8 @@ function Header({ sound, onSound }: { sound: boolean; onSound: () => void }) {
         Alerts go straight to carers' phones. Nobody needs to watch this screen.
       </div>
       <div className="ml-auto flex items-center gap-5 text-sm">
-        <span className="hidden items-center gap-1.5 text-ink-400 md:flex" title="Only skeletons leave the camera; no video is shown or stored">
-          <ShieldCheckIcon size={16} /> Skeleton only
+        <span className="hidden items-center gap-1.5 text-ink-400 md:flex" title="The model decides from the skeleton alone; the video under it is for the people watching">
+          <ShieldCheckIcon size={16} /> Model sees skeletons
         </span>
         <span className="hidden text-ink-400 sm:inline">{onShift} on shift</span>
         <button type="button" onClick={onSound} className="text-ink-300 hover:text-ink-100" aria-label={sound ? "Mute alert sounds" : "Turn alert sounds on"}>
@@ -219,7 +219,7 @@ function CameraTile({ room, variant, onOpen }: { room: Room; variant: "grid" | "
           {!small && (
             <span className="flex items-center gap-1.5">
               <span className={`size-1.5 rounded-full ${offline ? "bg-ink-500" : "bg-ink-200"}`} />
-              {status?.source === "live" ? "Live" : "Replay"}
+              {status?.source === "live" ? "Live" : status?.source === "recording" ? "Webcam" : "Replay"}
             </span>
           )}
         </div>
@@ -463,7 +463,7 @@ function StartOverlay({ onStart }: { onStart: () => void }) {
         <Label>{hello.site.ward}</Label>
         <h1 className="mt-2 text-3xl font-medium tracking-tight">{hello.site.name}</h1>
         <p className="mt-3 leading-relaxed text-ink-300">
-          {hello.rooms.length} rooms are watched as skeletons only. Falls are sent to carers' phones; this screen plays a tone too.
+          {hello.rooms.length} rooms, each with the skeleton the model sees drawn over its camera. Falls are sent to carers' phones; this screen plays a tone too.
         </p>
         <Button size="lg" className="mt-8 w-full" onClick={onStart}>
           Start monitoring

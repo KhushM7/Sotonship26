@@ -1,18 +1,20 @@
-# One camera per room. Every room is a replay of recorded clips for now: their
-# skeletons (Contract 1) play in real time, and the scores and alerts are the
-# backend's own (model_run in server.yaml). When the backend's live loop exists,
-# CAM 04 switches to `source: live` (webcam).
+# One camera per room. Every room replays recorded clips: their skeletons (Contract 1)
+# play in real time over the clip's own video, and the scores and alerts are the
+# backend's own (model_run in server.yaml).
 #
 # idle: clips looped in order while nothing is happening (picked with
-#   scripts/12_demo_clips.py: no alert, low fall score, person always visible)
+#   scripts/12_demo_clips.py --run e9_ens_gru: no alert, low fall score, person always
+#   visible; videos fetched with scripts/13_demo_videos.py)
 # scenarios: clips the presenter plays on cue; hold_s keeps the last pose and
-#   scores after the clip ends, so ON FLOOR (20 s) can fire on short public clips
+#   scores after the clip ends, so ON FLOOR (20 s) can fire on short public clips.
+#   {recording: latest} is the newest scripts/09_live.py --record session (webcam
+#   video, skeleton, and the scores and alerts the live script decided).
 rooms:
   - id: r1
     camera: CAM 01
     name: Room 1
     resident: M.H.
-    carers: [Amara Okafor]
+    carers: [Khush Mehta]
     source: replay
     idle:
       - {dataset: GMDCSA24, path: Subject_2/ADL/07}
@@ -22,50 +24,52 @@ rooms:
     camera: CAM 02
     name: Room 2
     resident: J.P.
-    carers: [Amara Okafor]
+    carers: [Khush Mehta]
     source: replay
     idle:
-      - {dataset: caucafall, path: adl/WalkS10}
       - {dataset: le2i, path: Home_02/video_51}
+      - {dataset: GMDCSA24, path: Subject_4/ADL/18}
   - id: r3
     camera: CAM 03
     name: Room 3
     resident: E.K.
-    carers: [Tomasz Wilk]
+    carers: [Ananth Harinarain]
     source: replay
     idle:
-      - {dataset: GMDCSA24, path: Subject_2/ADL/08}
-      - {dataset: GMDCSA24, path: Subject_2/ADL/03}
+      - {dataset: GMDCSA24, path: Subject_4/ADL/04}
+      - {dataset: GMDCSA24, path: Subject_4/ADL/01}
+      - {dataset: GMDCSA24, path: Subject_4/ADL/09}
   - id: r4
     camera: CAM 04
     name: Room 4
     resident: D.R.
-    carers: [Amara Okafor, Tomasz Wilk]
+    carers: [Khush Mehta, Ananth Harinarain]
     source: replay
     idle:
       - {dataset: GMDCSA24, path: Subject_2/ADL/06}
       - {dataset: GMDCSA24, path: Subject_2/ADL/11}
     scenarios:
       fall: {dataset: GMDCSA24, path: Subject_2/Fall/02, hold_s: 45}
+      live: {recording: latest, hold_s: 30}
   - id: r5
     camera: CAM 05
     name: Room 5
     resident: S.N.
-    carers: [Tomasz Wilk]
+    carers: [Ananth Harinarain]
     source: replay
     idle:
       - {dataset: GMDCSA24, path: Subject_2/ADL/01}
       - {dataset: GMDCSA24, path: Subject_2/ADL/05}
-      - {dataset: GMDCSA24, path: Subject_2/ADL/09}
+      - {dataset: GMDCSA24, path: Subject_4/ADL/11}
     scenarios:
-      fall: {dataset: caucafall, path: forward/FallForwardS10, hold_s: 45}
+      fall: {dataset: le2i, path: Home_01/video_2, hold_s: 45}
   - id: r6
     camera: CAM 06
     name: Room 6
     resident: B.A.
-    carers: [Tomasz Wilk]
+    carers: [Ananth Harinarain]
     source: replay
     idle:
       - {dataset: GMDCSA24, path: Subject_2/ADL/17}
       - {dataset: GMDCSA24, path: Subject_2/ADL/04}
-      - {dataset: GMDCSA24, path: Subject_2/ADL/10}
+      - {dataset: GMDCSA24, path: Subject_4/ADL/02}

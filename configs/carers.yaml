@@ -2,8 +2,8 @@
 # list them; tier 2 is everyone on shift; tier 3 is the senior on call.
 # Push topics are private: put them in configs/server.local.yaml, e.g.
 #   carers:
-#     Amara Okafor: {topic: fallsense-amara-7f3k9q2x}
+#     Khush Mehta: {topic: fallsense-khush-xxxxxxxx}
 carers:
-  - {name: Amara Okafor, tier: 1}
-  - {name: Tomasz Wilk, tier: 1}
+  - {name: Khush Mehta, tier: 1}
+  - {name: Ananth Harinarain, tier: 1}
   - {name: Ruth Adebayo, tier: 3, role: Senior nurse}

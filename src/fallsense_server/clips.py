@@ -3,9 +3,12 @@
 Skeletons are Contract 1, scores are Contract 4 (reports/scores/<run>/<split>.parquet)
 and alerts come from `fallsense.calibrate.alerts_from_scores` with the run's
 thresholds.yaml, so a replay room shows exactly what the backend decided.
+
+A 09_live.py recording (`{recording: <folder> | latest}` in rooms.yaml) plays the
+same way, with the scores and alerts the live script decided while it recorded.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -17,6 +20,12 @@ import yaml
 from fallsense.calibrate import CLASS_COLUMNS, alerts_from_scores
 from fallsense.config import DATA, load_config, skeleton_path
 from fallsense_server.settings import backend_root
+from fallsense_server.videos import (
+    RECORDING,
+    latest_recording,
+    recordings_dir,
+    video_url,
+)
 
 CFG = load_config()
 FPS = float(CFG["fps"])
@@ -42,7 +51,21 @@ class ClipRef:
 
     @classmethod
     def from_cfg(cls, d: dict[str, Any]) -> "ClipRef":
+        d = dict(d)
+        if "recording" in d:  # path "latest" is resolved when the clip starts
+            d = {"dataset": RECORDING, "path": str(d.pop("recording")), **d}
         return cls(**d)
+
+    @property
+    def is_recording(self) -> bool:
+        return self.dataset == RECORDING
+
+    def resolved(self) -> "ClipRef | None":
+        """This ref with `latest` replaced by the newest recording (None if none yet)."""
+        if not (self.is_recording and self.path == "latest"):
+            return self
+        name = latest_recording()
+        return None if name is None else replace(self, path=name)
 
 
 @dataclass
@@ -55,6 +78,8 @@ class Clip:
     alerts: list[tuple[float, str, float]] = field(default_factory=list)
     aspect: float = 16 / 9  # source width / height, to draw without distortion
     held_from_s: float | None = None  # start of the held tail, if any
+    video: str | None = None  # address of the source video; None = skeleton only
+    video_t0: float = 0.0  # seconds into the video of the clip's first frame
 
     @property
     def duration_s(self) -> float:
@@ -100,6 +125,8 @@ def clip_id(ref: ClipRef) -> tuple[int, str]:
 
 
 def load_clip(ref: ClipRef, run: str) -> Clip:
+    if ref.is_recording:
+        return load_recording(ref)
     cid, split = clip_id(ref)
     with np.load(skeleton_path(ref.dataset, ref.path)) as d:
         kp33 = d["kp"].astype(np.float32)
@@ -119,16 +146,7 @@ def load_clip(ref: ClipRef, run: str) -> Clip:
     end_frame = rows["end_frame"].to_numpy(np.int64) - f0
     probs = rows[CLASS_COLUMNS].to_numpy(np.float64)
 
-    held_from = None
-    if ref.hold_s > 0 and len(kp) and len(end_frame):
-        held_from = len(kp) / FPS
-        n_hold = round(ref.hold_s * FPS)
-        kp = np.concatenate([kp, np.repeat(kp[-1:], n_hold, axis=0)])
-        present = np.concatenate([present, np.repeat(present[-1:], n_hold)])
-        extra = np.arange(end_frame[-1] + EVAL_STRIDE, len(kp), EVAL_STRIDE)
-        end_frame = np.concatenate([end_frame, extra])
-        probs = np.concatenate([probs, np.repeat(probs[-1:], len(extra), axis=0)])
-
+    kp, present, end_frame, probs, held_from = _hold(ref, kp, present, end_frame, probs)
     win_t = end_frame / FPS
     th = load_thresholds(run)
     df = pd.DataFrame({"clip_id": 0, "end_frame": end_frame, "t_s": win_t})
@@ -145,8 +163,73 @@ def load_clip(ref: ClipRef, run: str) -> Clip:
         ],
         held_from_s=held_from,
         aspect=float(_index().at[cid, "width"]) / float(_index().at[cid, "height"]),
+        video=video_url(ref.dataset, ref.path),
+        video_t0=f0 / FPS,
+    )
+
+
+def _hold(
+    ref: ClipRef,
+    kp: np.ndarray,
+    present: np.ndarray,
+    end_frame: np.ndarray,
+    probs: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, float | None]:
+    """Keep the last pose and scores for ref.hold_s after the clip ends."""
+    if ref.hold_s <= 0 or not len(kp) or not len(end_frame):
+        return kp, present, end_frame, probs, None
+    held_from = len(kp) / FPS
+    n_hold = round(ref.hold_s * FPS)
+    kp = np.concatenate([kp, np.repeat(kp[-1:], n_hold, axis=0)])
+    present = np.concatenate([present, np.repeat(present[-1:], n_hold)])
+    extra = np.arange(end_frame[-1] + EVAL_STRIDE, len(kp), EVAL_STRIDE)
+    end_frame = np.concatenate([end_frame, extra])
+    probs = np.concatenate([probs, np.repeat(probs[-1:], len(extra), axis=0)])
+    return kp, present, end_frame, probs, held_from
+
+
+def load_recording(ref: ClipRef) -> Clip:
+    """A 09_live.py --record session: its skeletons, and the scores and alerts the
+    live script decided (scores.csv, alerts.csv), so no model runs here."""
+    folder = recordings_dir() / ref.path
+    with np.load(folder / "skeleton.npz") as d:
+        kp33 = d["kp"].astype(np.float32)
+        detected = d["detected"].astype(bool)
+        aspect = float(d["width"]) / float(d["height"])
+    kp = kp33[:, KEYPOINTS][:, :, [0, 1, 3]] if len(kp33) else np.zeros((0, 13, 3))
+    present = detected & np.isfinite(kp[:, :, 0]).any(axis=1)
+    scores = pd.read_csv(folder / "scores.csv")
+    alerts = pd.read_csv(folder / "alerts.csv")
+    f0 = round(ref.start_s * FPS)
+    f1 = len(kp) if ref.end_s is None else min(len(kp), round(ref.end_s * FPS))
+    kp, present = kp[f0:f1], present[f0:f1]
+    end_frame = np.round(scores["t_s"].to_numpy(np.float64) * FPS).astype(np.int64)
+    keep = (end_frame >= f0) & (end_frame < f1)
+    # scores.csv columns are t_s then the config classes, i.e. CLASS_COLUMNS order
+    probs = scores.iloc[:, 1:5].to_numpy(np.float64)[keep]
+    end_frame = end_frame[keep] - f0
+    kp, present, end_frame, probs, held_from = _hold(ref, kp, present, end_frame, probs)
+    t0, t1 = f0 / FPS, f1 / FPS
+    return Clip(
+        ref=ref,
+        kp=kp,
+        present=present,
+        win_t=end_frame / FPS,
+        probs=probs,
+        alerts=[
+            (float(r.t_s) - t0, str(r.level), float(r.score))
+            for r in alerts.itertuples()
+            if t0 <= r.t_s < t1
+        ],
+        aspect=aspect,
+        held_from_s=held_from,
+        video=video_url(ref.dataset, ref.path),
+        video_t0=t0,
     )
 
 
 def clip_exists(ref: ClipRef) -> bool:
+    if ref.is_recording:
+        r = ref.resolved()
+        return r is not None and (recordings_dir() / r.path / "session.yaml").exists()
     return Path(skeleton_path(ref.dataset, ref.path)).exists()
