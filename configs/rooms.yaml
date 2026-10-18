@@ -7,8 +7,12 @@
 #   visible; videos fetched with scripts/13_demo_videos.py)
 # scenarios: clips the presenter plays on cue; hold_s keeps the last pose and
 #   scores after the clip ends, so ON FLOOR (20 s) can fire on short public clips.
-#   {recording: latest} is the newest scripts/09_live.py --record session (webcam
-#   video, skeleton, and the scores and alerts the live script decided).
+# {recording: <folder>} plays a scripts/09_live.py --record session from
+#   {FALL_DATA}/recordings (webcam video, skeleton, and the scores and alerts the
+#   live script decided); {recording: latest} would pick the newest one.
+#   CAM 06 is our own webcam demo: idle loops the part before the fall, the
+#   presenter's "fall" plays it through the fall (FALL at 33.1 s), ending before
+#   someone walks up to the camera.
 rooms:
   - id: r1
     camera: CAM 01
@@ -50,7 +54,6 @@ rooms:
       - {dataset: GMDCSA24, path: Subject_2/ADL/11}
     scenarios:
       fall: {dataset: GMDCSA24, path: Subject_2/Fall/02, hold_s: 45}
-      live: {recording: latest, hold_s: 30}
   - id: r5
     camera: CAM 05
     name: Room 5
@@ -68,8 +71,8 @@ rooms:
     name: Room 6
     resident: B.A.
     carers: [Ananth Harinarain]
-    source: replay
+    source: recording
     idle:
-      - {dataset: GMDCSA24, path: Subject_2/ADL/17}
-      - {dataset: GMDCSA24, path: Subject_2/ADL/04}
-      - {dataset: GMDCSA24, path: Subject_4/ADL/02}
+      - {recording: 20261018-071944, end_s: 30}
+    scenarios:
+      fall: {recording: 20261018-071944, end_s: 34, hold_s: 20}

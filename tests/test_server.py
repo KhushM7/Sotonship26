@@ -18,6 +18,7 @@ from fastapi.testclient import TestClient
 
 from fallsense_server.app import create_app
 from fallsense_server.hub import MESSAGE_TYPES, Client
+from fallsense_server.rooms import ReplayRoom
 from fallsense_server.settings import load_settings
 
 
@@ -126,15 +127,17 @@ def test_live_scenario_plays_the_latest_recording(  # type: ignore[no-untyped-de
 ) -> None:
     _, server = app_and_server
     monkeypatch.setenv("FALLSENSE_RECORDINGS", str(tmp_path / "recordings"))
-    room = server.rooms["r4"]
+    cfg = {"id": "r4", "scenarios": {"live": {"recording": "latest"}}}
+    room = ReplayRoom(cfg, server.run, server.on_room_msg)
+    server.rooms["r4"] = room
     with pytest.raises(KeyError):
         room.play_scenario("live")  # nothing recorded yet
     _fake_recording(tmp_path / "recordings" / "20261018-120000")
     room.play_scenario("live")
     assert room.clip is not None and room.clip.ref.path == "20261018-120000"
     room.clip_start = 0.0
-    for t in np.arange(0, 5, 1 / 15):
+    for t in np.arange(0, 3.9, 1 / 15):  # the recording is 4 s long
         room.step(float(t))
-    assert room.status(5.0, 5.0)["source"] == "recording"
+    assert room.status(3.9, 5.0)["source"] == "recording"
     incs = [i for i in server.service.incidents.values() if i.room == "r4"]
     assert incs and incs[0].level == "FALL"
