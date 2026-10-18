@@ -1,0 +1,43 @@
+# fallsense server: monitoring wall, carer alerts and the demo (docs/Frontend Plan).
+# Local overrides (ntfy topics, public URL, PIN) go in configs/server.local.yaml,
+# which is gitignored and merged over this file and carers.yaml.
+schema_version: 1
+site:
+  name: Larkfield House
+  ward: Willow Ward
+port: 8000
+# tunnel: true publishes this laptop through Cloudflare (cloudflared must be installed):
+# - with tunnel_token (a named tunnel from the Cloudflare dashboard, kept in
+#   server.local.yaml) at your fixed public_url, e.g. https://fallsense.example.com
+# - without it, a quick tunnel at a new https://<words>.trycloudflare.com each start,
+#   picked up automatically and put into every notification
+tunnel: false
+# where phones reach the laptop: "auto" = http://<LAN IP>:<port> (re-detected for every
+# push) unless a tunnel is running; with a named tunnel, your fixed https address
+public_url: auto
+# true: requests made on this laptop itself need no sign-in (development).
+# Deployed, set false so every page, the laptop's included, signs in. Tunnel traffic
+# is recognised by its forwarding headers and always signs in either way.
+trust_localhost: true
+# one PIN per role: carers on /phone, the nurse station on the wall and log, the
+# presenter on /presenter (demo controls). Override them in server.local.yaml.
+pins:
+  carer: "2468"
+  station: "1357"
+  presenter: "8642"
+
+# the backend run whose stored scores and thresholds drive the replay rooms;
+# a better model later is a change here only
+model_run: e5_gru_s1
+scores_split: val
+
+escalation:
+  ack_s: {FALL: 30, ON FLOOR: 30, CHECK: 90, OFFLINE: 60}
+  repeat_s: 30          # re-notify the next tier this often until someone acknowledges
+  attend_s: 180         # acknowledged but not "with them" -> escalate
+  carer_in_room_s: 900  # "Carer in room" mute switches itself off after this
+  offline_after_s: 5    # no frames for this long -> camera offline incident
+  replay_s: 10          # skeleton seconds kept for the incident replay
+
+ntfy:
+  server: https://ntfy.sh
