@@ -1,13 +1,17 @@
-"""A Cloudflare quick tunnel: a public HTTPS address for this laptop, on any network.
+"""A Cloudflare tunnel: a public HTTPS address for this laptop, on any network.
 
-`cloudflared tunnel --url http://localhost:<port>` prints a random
-https://<words>.trycloudflare.com address; phones use it from mobile data or any
-Wi-Fi, so nothing depends on a shared network or the laptop's IP. The address
-changes on every start, which is fine: the server reads it here and puts it in
-every notification. No Cloudflare account is needed.
+Quick tunnel (no account): `cloudflared tunnel --url http://localhost:<port>` prints a
+random https://<words>.trycloudflare.com address, new on every start; the server
+reads it here and puts it in every notification.
+
+Named tunnel (free account + your domain): `cloudflared tunnel run` with the token
+from the Cloudflare dashboard (passed in TUNNEL_TOKEN, not on the command line). The
+address is your fixed hostname, routed to localhost:<port> in the dashboard; it is
+ready once cloudflared registers its first connection.
 """
 
 import logging
+import os
 import re
 import shutil
 import subprocess
@@ -36,20 +40,29 @@ class Tunnel:
         port: int,
         on_url: Callable[[str], None],
         on_exit: Callable[[], None],
+        token: str | None = None,
+        fixed_url: str | None = None,
     ) -> None:
         self.exe, self.port, self.on_url, self.on_exit = exe, port, on_url, on_exit
+        self.token, self.fixed_url = token, fixed_url
         self.proc: subprocess.Popen[str] | None = None
         self.url: str | None = None
 
     def start(self) -> None:
-        self.proc = subprocess.Popen(
-            [
-                self.exe,
+        env = dict(os.environ)
+        if self.token:
+            args = ["tunnel", "--no-autoupdate", "run"]
+            env["TUNNEL_TOKEN"] = self.token
+        else:
+            args = [
                 "tunnel",
                 "--no-autoupdate",
                 "--url",
                 f"http://localhost:{self.port}",
-            ],
+            ]
+        self.proc = subprocess.Popen(
+            [self.exe, *args],
+            env=env,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,  # cloudflared logs, including the address, to stderr
             text=True,
@@ -62,10 +75,14 @@ class Tunnel:
     def _watch(self) -> None:
         assert self.proc is not None and self.proc.stderr is not None
         for line in self.proc.stderr:
-            if self.url is None and (m := URL.search(line)):
-                self.url = m.group(0)
-                log.info("tunnel ready: %s", self.url)
-                self.on_url(self.url)
+            if self.url is None:
+                if self.token and "Registered tunnel connection" in line:
+                    self.url = self.fixed_url
+                elif not self.token and (m := URL.search(line)):
+                    self.url = m.group(0)
+                if self.url:
+                    log.info("tunnel ready: %s", self.url)
+                    self.on_url(self.url)
             elif " ERR " in line:
                 log.warning("cloudflared: %s", line.strip())
         log.warning("cloudflared exited (code %s)", self.proc.wait())

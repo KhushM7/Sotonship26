@@ -1,4 +1,4 @@
-import { ArrowLeftIcon, BackspaceIcon, BellIcon, BellSlashIcon, CaretRightIcon, SignOutIcon } from "@phosphor-icons/react";
+import { ArrowLeftIcon, BellIcon, BellSlashIcon, CaretRightIcon, SignOutIcon } from "@phosphor-icons/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { adoptLinkIdentity, api, identity, setIdentity, type Identity } from "../api";
 import type { Incident } from "../contracts";
@@ -6,6 +6,7 @@ import { clock, levelText, incidentReason, STATE_LABEL, unanswered, urgent } fro
 import { activeIncidents, connect, reconnect, subscribe, useStore } from "../store";
 import { Button, Label, LevelMark, useNow } from "../ui/bits";
 import { IncidentView } from "../ui/IncidentView";
+import { PinPad } from "../ui/PinPad";
 
 /** /phone and /phone/i/:id – opened from the ntfy notification on a carer's phone. */
 export function Phone({ path }: { path: string }) {
@@ -66,38 +67,21 @@ export function Phone({ path }: { path: string }) {
 
 function SignIn({ onDone }: { onDone: (id: Identity) => void }) {
   const [info, setInfo] = useState<Awaited<ReturnType<typeof api.publicInfo>> | null>(null);
-  const carers = info?.carers ?? [];
-  const site = info?.site;
   const [name, setName] = useState<string | null>(null);
-  const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     api.publicInfo().then(setInfo).catch(() => setError("Cannot reach the server"));
   }, []);
 
-  const press = async (d: string) => {
-    const next = (pin + d).slice(0, 4);
-    setPin(next);
-    setError(null);
-    if (next.length === 4 && name) {
-      try {
-        onDone(await api.login(name, next));
-      } catch (e) {
-        const msg = (e as Error).message;
-        setError(msg.includes("too many") ? "Too many wrong PINs. Wait 10 minutes." : "That PIN is not right");
-        setPin("");
-      }
-    }
-  };
-
   return (
     <div className="flex flex-1 flex-col">
-      <Label className="mt-6">{site?.ward}</Label>
+      <Label className="mt-6">{info?.site.ward}</Label>
       <h1 className="mt-2 text-3xl font-medium tracking-tight">Start your shift</h1>
+      {error && <p className="mt-4 text-sm text-alarm">{error}</p>}
       {!name ? (
         <div className="mt-8 flex flex-col divide-y divide-ink-800 border-y border-ink-800">
-          {carers.map((c) => (
+          {(info?.carers ?? []).map((c) => (
             <button key={c.name} type="button" onClick={() => setName(c.name)} className="flex min-h-14 items-center justify-between text-left active:bg-ink-900">
               <span>
                 <span className="block">{c.name}</span>
@@ -108,33 +92,11 @@ function SignIn({ onDone }: { onDone: (id: Identity) => void }) {
           ))}
         </div>
       ) : (
-        <div className="mt-8 flex flex-col items-center">
-          <button type="button" onClick={() => { setName(null); setPin(""); }} className="self-start text-sm text-ink-400">
+        <div className="mt-8 flex flex-col">
+          <button type="button" onClick={() => setName(null)} className="mb-8 self-start text-sm text-ink-400">
             <ArrowLeftIcon className="inline" /> {name}
           </button>
-          <div className="mt-8 flex gap-4" aria-label={`${pin.length} of 4 digits`}>
-            {[0, 1, 2, 3].map((i) => (
-              <span key={i} className={`size-3 rounded-full border ${i < pin.length ? "border-ink-100 bg-ink-100" : "border-ink-500"}`} />
-            ))}
-          </div>
-          <p className="mt-3 h-5 text-sm text-alarm">{error}</p>
-          <div className="mt-4 grid w-full max-w-xs grid-cols-3 gap-3">
-            {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"].map((k) =>
-              k === "" ? (
-                <span key="blank" />
-              ) : (
-                <button
-                  key={k}
-                  type="button"
-                  onClick={() => (k === "del" ? setPin((p) => p.slice(0, -1)) : press(k))}
-                  className="grid h-16 place-items-center rounded-md border border-ink-800 font-mono text-xl active:scale-[0.97] active:bg-ink-900"
-                  aria-label={k === "del" ? "Delete" : k}
-                >
-                  {k === "del" ? <BackspaceIcon size={20} /> : k}
-                </button>
-              ),
-            )}
-          </div>
+          <PinPad name={name} onDone={onDone} />
         </div>
       )}
     </div>

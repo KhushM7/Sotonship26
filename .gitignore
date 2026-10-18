@@ -19,3 +19,4 @@ server_data/
 configs/server.local.yaml
 frontend/node_modules/
 frontend/dist/
+frontend/*.tsbuildinfo

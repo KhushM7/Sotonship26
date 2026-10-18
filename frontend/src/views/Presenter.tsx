@@ -1,16 +1,18 @@
 import { ArrowCounterClockwiseIcon, PlayIcon, PlugsIcon } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
-import { api } from "../api";
+import { api, PRESENTER } from "../api";
 import { POSTURE_LABEL } from "../format";
 import { connect, useStore } from "../store";
 import { Button, Label } from "../ui/bits";
+import { RoleSignIn } from "../ui/PinPad";
 
-/** /presenter – demo controls; the server only accepts them from this laptop. */
+/** /presenter – demo controls; the server only accepts them with the presenter PIN. */
 export function Presenter() {
   const hello = useStore((s) => s.hello);
   const status = useStore((s) => s.status);
   const scores = useStore((s) => s.scores);
   const [msg, setMsg] = useState<string | null>(null);
+  const unauthorized = useStore((s) => s.unauthorized);
   useEffect(() => connect("none"), []);
 
   const run = (label: string, fn: () => Promise<unknown>) => async () => {
@@ -22,6 +24,7 @@ export function Presenter() {
     }
   };
 
+  if (unauthorized) return <RoleSignIn name={PRESENTER} title="Demo controls" />;
   if (!hello) return null;
   return (
     <div className="mx-auto max-w-3xl px-6 py-10">

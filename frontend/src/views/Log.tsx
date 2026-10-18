@@ -1,7 +1,9 @@
 import { ArrowLeftIcon, DownloadSimpleIcon } from "@phosphor-icons/react";
 import { useEffect, useMemo } from "react";
 import { clock, OUTCOME_LABEL, STATE_LABEL, timeOfDay } from "../format";
+import { api, STATION } from "../api";
 import { connect, useStore } from "../store";
+import { RoleSignIn } from "../ui/PinPad";
 import { Label } from "../ui/bits";
 
 function median(xs: number[]) {
@@ -14,6 +16,7 @@ function median(xs: number[]) {
 export function Log() {
   const hello = useStore((s) => s.hello);
   const incidents = useStore((s) => s.incidents);
+  const unauthorized = useStore((s) => s.unauthorized);
   useEffect(() => connect("none"), []);
 
   const rows = useMemo(
@@ -33,6 +36,7 @@ export function Log() {
     ["False alarms", `${falseAlarms} of ${falls.filter((i) => i.outcome).length} closed`],
   ];
 
+  if (unauthorized) return <RoleSignIn name={STATION} title="Shift log" />;
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
       <a href="/" className="inline-flex items-center gap-1.5 text-sm text-ink-400 hover:text-ink-100">
@@ -43,9 +47,9 @@ export function Log() {
           <Label>{hello?.site.ward}</Label>
           <h1 className="mt-2 text-2xl font-medium tracking-tight">Shift log</h1>
         </div>
-        <a href="/api/export/incidents.csv" download="incidents.csv" className="inline-flex items-center gap-2 text-sm text-ink-300 hover:text-ink-100">
+        <button type="button" onClick={() => api.exportCsv()} className="inline-flex items-center gap-2 text-sm text-ink-300 hover:text-ink-100">
           <DownloadSimpleIcon /> Export CSV
-        </a>
+        </button>
       </div>
 
       <dl className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-ink-800 bg-ink-800 md:grid-cols-4">

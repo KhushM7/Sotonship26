@@ -16,7 +16,7 @@ if not os.environ.get("FALL_DATA"):
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
-from fallsense_server.app import create_app
+from fallsense_server.app import PRESENTER, STATION, create_app
 from fallsense_server.settings import load_settings
 from fallsense_server.tunnel import URL
 
@@ -49,18 +49,54 @@ def test_tunnel_reads_need_a_sign_in(client: TestClient) -> None:
     assert client.get("/api/incidents", headers=bad).status_code == 401
 
 
-def test_tunnel_cannot_act_as_the_nurse_station_or_presenter(
-    client: TestClient,
-) -> None:
+def _signed(client: TestClient, name: str, pin: str) -> dict[str, str]:
+    r = client.post("/api/login", json={"carer": name, "pin": pin}, headers=TUNNEL)
+    assert r.status_code == 200, r.text
+    return {**TUNNEL, "x-carer": name, "x-token": r.json()["token"]}
+
+
+def test_each_role_has_its_own_pin(client: TestClient) -> None:
+    pins = {"carer": "2468", "station": "1357", "presenter": "8642"}
+    r = client.post(
+        "/api/login", json={"carer": STATION, "pin": pins["carer"]}, headers=TUNNEL
+    )
+    assert r.status_code == 401  # the carer PIN does not open the wall
+    assert (
+        client.post(
+            "/api/login",
+            json={"carer": PRESENTER, "pin": pins["presenter"]},
+            headers=TUNNEL,
+        ).json()["role"]
+        == "presenter"
+    )
+
+
+def test_demo_controls_need_the_presenter(client: TestClient) -> None:
+    assert client.post("/api/demo/reset", headers=TUNNEL).status_code == 401
+    carer = _signed(client, CARER, "2468")
+    assert client.post("/api/demo/reset", headers=carer).status_code == 403
+    station = _signed(client, STATION, "1357")
+    assert client.post("/api/demo/reset", headers=station).status_code == 403
+    presenter = _signed(client, PRESENTER, "8642")
+    assert client.post("/api/demo/reset", headers=presenter).status_code == 200
+
+
+def test_the_wall_acts_as_the_nurse_station(client: TestClient) -> None:
     r = client.post("/api/rooms/r4/carer_in_room", json={"on": True}, headers=TUNNEL)
     assert r.status_code == 401
-    r = client.post("/api/demo/reset", headers=TUNNEL)
-    assert r.status_code == 403
-    token = _token(client)
-    r = client.post(
-        "/api/demo/reset", json={"carer": CARER, "token": token}, headers=TUNNEL
-    )
-    assert r.status_code == 403  # presenter controls stay on the laptop
+    station = _signed(client, STATION, "1357")
+    r = client.post("/api/rooms/r4/carer_in_room", json={"on": True}, headers=station)
+    assert r.status_code == 200
+    assert client.get("/api/state", headers=station).status_code == 200
+
+
+def test_deployed_laptop_is_not_trusted(tmp_path: Path) -> None:
+    settings = load_settings()
+    settings.raw["trust_localhost"] = False
+    app = create_app(settings, start=False, state_dir=tmp_path)
+    with TestClient(app) as c:
+        assert c.get("/api/state").status_code == 401
+        assert c.post("/api/demo/reset").status_code == 401
 
 
 def test_wrong_pins_are_limited(client: TestClient) -> None:

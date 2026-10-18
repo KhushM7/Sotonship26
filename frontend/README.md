@@ -54,10 +54,26 @@ winget install --id Cloudflare.cloudflared --exact   # once
 A few seconds after start the log, and the wall's Activity list, show
 `https://<words>.trycloudflare.com/phone`. Phones open that from mobile data or any
 Wi-Fi; the laptop only needs internet. The address is new on every start and goes into
-every notification automatically. Through the tunnel nothing is trusted: phones sign
-in with the PIN, every read and action carries the carer's token, wrong PINs are
-limited to 5 per 10 minutes, and presenter controls only work on the laptop itself.
-Without `--tunnel`, phones must be on the laptop's network (`public_url: auto`).
+every notification automatically. Without `--tunnel`, phones must be on the laptop's
+network (`public_url: auto`).
+
+## Deployed: one address for everything
+
+Set in `configs/server.local.yaml`: `tunnel: true`, `trust_localhost: false`, your own
+`pins`, and for a fixed address a named tunnel (`tunnel_token` from Cloudflare Zero
+Trust → Networks → Tunnels, public hostname → `http://localhost:8000`, plus
+`public_url: https://fallsense.<your-domain>`). Then every page is used through that
+address, and each signs in with its role's PIN:
+
+| Page | Sign in as | Can |
+| --- | --- | --- |
+| `/phone` | a carer | see incidents, respond |
+| `/` (wall), `/log` | Nurse station | see everything, respond, carer-in-room, export |
+| `/presenter` | Presenter | demo controls (play a fall, cut a camera, reset) |
+
+Every read and action carries the signed-in name and token, wrong PINs are limited to
+5 per 10 minutes per address, and tunnel traffic is never treated as the laptop.
+Stop the server with Ctrl+C so the tunnel closes with it.
 
 ## Configs
 

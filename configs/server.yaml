@@ -6,17 +6,25 @@ site:
   name: Larkfield House
   ward: Willow Ward
 port: 8000
-# tunnel: true starts a Cloudflare quick tunnel (cloudflared must be installed), so
-# phones reach the laptop from any network at https://<words>.trycloudflare.com; the
-# address is new each start and goes into every notification automatically
+# tunnel: true publishes this laptop through Cloudflare (cloudflared must be installed):
+# - with tunnel_token (a named tunnel from the Cloudflare dashboard, kept in
+#   server.local.yaml) at your fixed public_url, e.g. https://fallsense.example.com
+# - without it, a quick tunnel at a new https://<words>.trycloudflare.com each start,
+#   picked up automatically and put into every notification
 tunnel: false
-# without a tunnel, where phones reach the laptop: "auto" = http://<LAN IP>:<port>,
-# re-detected for every push
+# where phones reach the laptop: "auto" = http://<LAN IP>:<port> (re-detected for every
+# push) unless a tunnel is running; with a named tunnel, your fixed https address
 public_url: auto
-# requests from this laptop act as "Nurse station" without a PIN (tunnel traffic is
-# recognised by its forwarding headers and always needs a sign-in)
+# true: requests made on this laptop itself need no sign-in (development).
+# Deployed, set false so every page, the laptop's included, signs in. Tunnel traffic
+# is recognised by its forwarding headers and always signs in either way.
 trust_localhost: true
-shift_pin: "2468"
+# one PIN per role: carers on /phone, the nurse station on the wall and log, the
+# presenter on /presenter (demo controls). Override them in server.local.yaml.
+pins:
+  carer: "2468"
+  station: "1357"
+  presenter: "8642"
 
 # the backend run whose stored scores and thresholds drive the replay rooms;
 # a better model later is a change here only

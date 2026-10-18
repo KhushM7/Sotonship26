@@ -1,12 +1,25 @@
 import type { Incident } from "./contracts";
 
-/** Who this browser acts as. On the demo laptop the server treats requests as the nurse station. */
+/**
+ * Who this page acts as. Each page keeps its own sign-in, so the wall (nurse
+ * station), the presenter and a carer's phone can share one browser. With
+ * trust_localhost on, pages on the demo laptop need no sign-in at all.
+ */
 export interface Identity {
   carer: string;
   token: string;
+  role?: string;
 }
 
-const KEY = "fallsense.identity";
+export const STATION = "Nurse station";
+export const PRESENTER = "Presenter";
+
+const SCOPE = location.pathname.startsWith("/phone")
+  ? "phone"
+  : location.pathname.startsWith("/presenter")
+    ? "presenter"
+    : "station";
+const KEY = `fallsense.identity.${SCOPE}`;
 
 export function identity(): Identity | null {
   try {
@@ -26,6 +39,11 @@ export function setIdentity(id: Identity | null) {
   }
 }
 
+function authHeaders(): Record<string, string> {
+  const me = identity();
+  return me ? { "X-Carer": me.carer, "X-Token": me.token } : {};
+}
+
 /**
  * A notification link carries ?carer=&token= (keep it so the carer stays signed in)
  * and, from the "I'm going" button, &ack=1. The query is then removed so a reload
@@ -43,7 +61,7 @@ export function adoptLinkIdentity(): { ack: boolean } {
 async function post<T>(url: string, body: object = {}): Promise<T> {
   const r = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify({ ...identity(), ...body }),
   });
   if (!r.ok) {
@@ -51,6 +69,12 @@ async function post<T>(url: string, body: object = {}): Promise<T> {
     throw new Error(detail.detail ?? `${r.status} ${r.statusText}`);
   }
   return r.json() as Promise<T>;
+}
+
+async function get(url: string): Promise<Response> {
+  const r = await fetch(url, { headers: authHeaders() });
+  if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+  return r;
 }
 
 export const api = {
@@ -73,15 +97,19 @@ export const api = {
     const r = await fetch("/api/public");
     return (await r.json()) as { site: { name: string; ward: string }; carers: { name: string; role: string }[] };
   },
-  replay: async (id: string) => {
-    const me = identity();
-    const r = await fetch(`/api/incidents/${id}/replay`, {
-      headers: me ? { "X-Carer": me.carer, "X-Token": me.token } : {},
-    });
-    return (await r.json()) as {
+  replay: async (id: string) =>
+    (await (await get(`/api/incidents/${id}/replay`)).json()) as {
       fps: number;
       frames: { t: number; kp: ([number, number, number] | null)[]; present: boolean }[];
-    };
+    },
+  /** The shift's incidents as a CSV file download. */
+  exportCsv: async () => {
+    const blob = await (await get("/api/export/incidents.csv")).blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "incidents.csv";
+    a.click();
+    URL.revokeObjectURL(a.href);
   },
   demo: {
     scenario: (room: string, name: string) =>

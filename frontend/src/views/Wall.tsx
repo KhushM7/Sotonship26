@@ -11,7 +11,7 @@ import {
 } from "@phosphor-icons/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { api } from "../api";
+import { api, STATION } from "../api";
 import type { Incident, Room } from "../contracts";
 import {
   ago,
@@ -29,6 +29,7 @@ import { activeIncidents, connect, useStore } from "../store";
 import { Button, Label, LevelMark, useNow } from "../ui/bits";
 import { FallChart, LiveSkeleton, PostureRibbon, type Tone } from "../ui/canvases";
 import { IncidentView } from "../ui/IncidentView";
+import { RoleSignIn } from "../ui/PinPad";
 
 export function Wall() {
   const hello = useStore((s) => s.hello);
@@ -44,7 +45,9 @@ export function Wall() {
   const active = useMemo(() => activeIncidents(incidents), [incidents]);
   const focus = active.find((i) => i.kind === "fall")?.room ?? null;
   const stage = useStageRoom(focus);
+  const unauthorized = useStore((s) => s.unauthorized);
 
+  if (unauthorized) return <RoleSignIn name={STATION} title="Nurse station" />;
   if (!hello) return <Connecting />;
 
   return (

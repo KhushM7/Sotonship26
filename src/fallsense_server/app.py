@@ -41,6 +41,8 @@ LOCAL_HOSTS = {"127.0.0.1", "::1", "localhost", "testclient"}
 # cloudflared forwards from localhost but adds these, so tunnel traffic is not local
 FORWARDED = ("cf-connecting-ip", "cf-ray", "x-forwarded-for")
 LOGIN_TRIES, LOGIN_WINDOW_S = 5, 600  # wrong PINs allowed per address per window
+# sign-in names for the two non-carer roles (each has its own PIN in `pins`)
+STATION, PRESENTER = "Nurse station", "Presenter"
 
 
 class Who(BaseModel):
@@ -159,9 +161,15 @@ class Server:
         await self.notifier.close()
 
     def _start_tunnel(self) -> None:
-        exe = find_cloudflared(self.settings.raw.get("cloudflared"))
+        raw = self.settings.raw
+        exe = find_cloudflared(raw.get("cloudflared"))
         if exe is None:
             log.warning("tunnel: true but cloudflared is not installed; using the LAN")
+            return
+        token = raw.get("tunnel_token") or None
+        fixed = str(raw.get("public_url", "auto")).rstrip("/")
+        if token and not fixed.startswith("https://"):
+            log.warning("tunnel_token needs public_url: https://<your hostname>")
             return
         loop = asyncio.get_running_loop()
 
@@ -184,6 +192,8 @@ class Server:
             int(self.settings.raw["port"]),
             on_url=lambda u: loop.call_soon_threadsafe(ready, u),
             on_exit=lambda: loop.call_soon_threadsafe(gone),
+            token=token,
+            fixed_url=fixed if token else None,
         )
         self.tunnel.start()
 
@@ -250,17 +260,38 @@ class Server:
 
     # ------------------------------------------------------------ auth
 
+    def role_of(self, name: str) -> str | None:
+        """carer (phones), station (wall and log) or presenter (demo controls)."""
+        if self.settings.carer(name):
+            return "carer"
+        return {STATION: "station", PRESENTER: "presenter"}.get(name)
+
+    def pin_for(self, role: str) -> str:
+        pins = self.settings.raw.get("pins") or {}
+        return str(pins.get(role, self.settings.raw.get("shift_pin", "")))
+
+    def principal(
+        self, conn: HTTPConnection, who: Who | None = None
+    ) -> tuple[str, str] | None:
+        """(name, role) of whoever is asking: a valid sign-in (body, headers or the
+        WebSocket query), else this laptop when trust_localhost is on, else None."""
+        name = (who and who.carer) or conn.headers.get("x-carer") or ""
+        name = name or conn.query_params.get("carer") or ""
+        token = (who and who.token) or conn.headers.get("x-token") or ""
+        token = token or conn.query_params.get("token") or ""
+        role = self.role_of(name)
+        if role and token and self.tokens.check(name, token):
+            return name, role
+        if self.is_local(conn) and self.settings.raw.get("trust_localhost", True):
+            return (name, "carer") if role == "carer" else (STATION, "presenter")
+        return None
+
     def can_view(self, conn: HTTPConnection) -> bool:
-        """Reads: this laptop, or a signed-in carer (headers, or query on the WebSocket)."""
-        if self.is_local(conn):
-            return True
-        carer = conn.headers.get("x-carer") or conn.query_params.get("carer") or ""
-        token = conn.headers.get("x-token") or conn.query_params.get("token") or ""
-        return bool(self.settings.carer(carer)) and self.tokens.check(carer, token)
+        return self.principal(conn) is not None
 
     def viewer(self, conn: HTTPConnection) -> None:
         if not self.can_view(conn):
-            raise HTTPException(401, "sign in on the phone page first")
+            raise HTTPException(401, "sign in first")
 
     def login_allowed(self, conn: HTTPConnection) -> bool:
         tries = self.failed_logins[client_address(conn)]
@@ -269,13 +300,18 @@ class Server:
         return len(tries) < LOGIN_TRIES
 
     def actor(self, request: Request, who: Who) -> str:
-        """The carer acting: a valid link token, or this laptop (the nurse station)."""
-        known = who.carer and self.settings.carer(who.carer)
-        if known and who.token and self.tokens.check(str(who.carer), who.token):
-            return str(who.carer)
-        if self.is_local(request) and self.settings.raw.get("trust_localhost", True):
-            return str(who.carer) if known else "Nurse station"
-        raise HTTPException(401, "sign in on the phone page first")
+        """The name recorded on an action: the carer, or "Nurse station"."""
+        p = self.principal(request, who)
+        if p is None:
+            raise HTTPException(401, "sign in first")
+        return STATION if p[1] == "presenter" else p[0]
+
+    def presenter(self, request: Request) -> None:
+        p = self.principal(request)
+        if p is None:
+            raise HTTPException(401, "sign in first")
+        if p[1] != "presenter":
+            raise HTTPException(403, "demo controls need the presenter PIN")
 
     @staticmethod
     def is_local(conn: HTTPConnection) -> bool:
@@ -358,12 +394,15 @@ def create_app(
     async def login(body: Login, request: Request) -> dict[str, str]:
         if not srv.login_allowed(request):
             raise HTTPException(429, "too many wrong PINs; wait 10 minutes")
-        if not srv.settings.carer(body.carer) or body.pin != str(
-            srv.settings.raw["shift_pin"]
-        ):
+        role = srv.role_of(body.carer)
+        if role is None or body.pin != srv.pin_for(role):
             srv.failed_logins[client_address(request)].append(time.time())
             raise HTTPException(401, "wrong name or PIN")
-        return {"carer": body.carer, "token": srv.tokens.token(body.carer)}
+        return {
+            "carer": body.carer,
+            "role": role,
+            "token": srv.tokens.token(body.carer),
+        }
 
     @app.post("/api/incidents/{inc_id}/ack")
     async def ack(inc_id: str, body: Who, request: Request) -> dict[str, Any]:
@@ -453,13 +492,9 @@ def create_app(
 
     # ------------------------------------------------------------ presenter
 
-    def presenter_only(request: Request) -> None:
-        if not srv.is_local(request):
-            raise HTTPException(403, "presenter controls only work on the demo laptop")
-
     @app.post("/api/demo/rooms/{room}/scenario/{name}")
     async def scenario(room: str, name: str, request: Request) -> dict[str, str]:
-        presenter_only(request)
+        srv.presenter(request)
         r = srv.rooms.get(room)
         if r is None or name not in r.scenarios:
             raise HTTPException(404, f"no scenario {name} in {room}")
@@ -468,7 +503,7 @@ def create_app(
 
     @app.post("/api/demo/rooms/{room}/offline")
     async def offline(room: str, body: Toggle, request: Request) -> dict[str, Any]:
-        presenter_only(request)
+        srv.presenter(request)
         if room not in srv.rooms:
             raise HTTPException(404, f"no room {room}")
         srv.rooms[room].set_offline(body.on)
@@ -476,7 +511,7 @@ def create_app(
 
     @app.post("/api/demo/reset")
     async def reset(request: Request) -> dict[str, str]:
-        presenter_only(request)
+        srv.presenter(request)
         srv.service.reset()
         for r in srv.rooms.values():
             r.set_offline(False)
