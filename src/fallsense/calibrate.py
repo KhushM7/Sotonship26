@@ -5,6 +5,7 @@
 Dev A's evaluator, 07_calibrate.py and the live demo.
 """
 
+from collections import deque
 from pathlib import Path
 from typing import Any
 
@@ -73,6 +74,51 @@ def window_logits(
     return np.concatenate(out) if out else np.empty((0, windows.N_CLASSES), np.float32)
 
 
+def ensemble_members(model_dir: Path) -> list[Path]:
+    """Member run folders listed in models/<run>/ensemble.yaml, or [] for a plain run."""
+    path = Path(model_dir) / "ensemble.yaml"
+    if not path.exists():
+        return []
+    with open(path, encoding="utf-8") as f:
+        names = yaml.safe_load(f)["members"]
+    return [Path(model_dir).parent / n for n in names]
+
+
+def ensemble_logits(member_logits: list[np.ndarray]) -> np.ndarray:
+    """log of the mean member softmax: an ensemble's logits (softmax gives the mean)."""
+    probs = np.mean([softmax_t(lg) for lg in member_logits], axis=0)
+    return np.log(np.maximum(probs, 1e-12)).astype(np.float32)
+
+
+class Scorer:
+    """Window logits from raw (N, 30, 51) features, for one run or an ensemble.
+
+    An ensemble folder holds ensemble.yaml (members: [run, ...]) and averages its
+    members' probabilities, each member with its own feat_stats.npz.
+    """
+
+    def __init__(self, model_dir: Path) -> None:
+        members = ensemble_members(model_dir)
+        self.ensemble = bool(members)
+        self.runs = [load_run(m) for m in members or [Path(model_dir)]]
+
+    @torch.no_grad()
+    def logits(self, feats: np.ndarray, batch: int = 1024) -> np.ndarray:
+        out = []
+        for model, stats in self.runs:
+            x = ((feats - stats["mu"]) / stats["sd"]).astype(np.float32)
+            parts = [
+                model(torch.from_numpy(x[i : i + batch])).numpy()
+                for i in range(0, len(x), batch)
+            ]
+            out.append(
+                np.concatenate(parts)
+                if parts
+                else np.empty((0, windows.N_CLASSES), np.float32)
+            )
+        return ensemble_logits(out) if self.ensemble else out[0]
+
+
 def softmax_t(logits: np.ndarray, temperature: float = 1.0) -> np.ndarray:
     return torch.softmax(torch.from_numpy(logits) / temperature, dim=1).numpy()
 
@@ -107,9 +153,9 @@ def write_scores(
     model_dir, split_npz = Path(model_dir), Path(split_npz)
     if temperature is None:
         temperature = float(load_thresholds(model_dir).get("temperature", 1.0))
-    model, stats = load_run(model_dir)
     arrays = windows.load_windows(split_npz.stem, path=split_npz)
-    probs = softmax_t(window_logits(model, stats, arrays), temperature)
+    logits = Scorer(model_dir).logits(dataset.window_features(arrays))
+    probs = softmax_t(logits, temperature)
     df = scores_frame(arrays, probs)
     scores.save_scores(model_dir.name, split_npz.stem, df, path=out_parquet)
     return df
@@ -118,44 +164,50 @@ def write_scores(
 # ---------------------------------------------------------------- events
 
 
-def _clip_alerts(
-    t: np.ndarray,
-    s: np.ndarray,
-    p_fallen: np.ndarray,
-    t_high: float,
-    t_low: float,
-    on_floor_s: float,
-) -> list[tuple[float, str, float]]:
-    out: list[tuple[float, str, float]] = []
-    last_t, last_rank = -np.inf, -1
-    floor_start: float | None = None
-    floor_done = False
-    for ti, si, fi in zip(t, s, p_fallen):
-        if fi > FALLEN_P:
-            if floor_start is None:
-                floor_start, floor_done = ti, False
-        else:
-            floor_start = None
+class AlertState:
+    """The event logic for one clip (or one live stream), one evaluation window at a time.
 
-        level, score = None, si
+    `step` takes the window's p_falling and p_fallen and returns (level, score) when
+    an alert fires; the fall score is the max p_falling over the last
+    SCORE_WINDOWS windows.
+    """
+
+    def __init__(self, t_high: float, t_low: float, on_floor_s: float) -> None:
+        self.t_high, self.t_low, self.on_floor_s = t_high, t_low, on_floor_s
+        self.recent: deque[float] = deque(maxlen=SCORE_WINDOWS)
+        self.last_t, self.last_rank = -np.inf, -1
+        self.floor_start: float | None = None
+        self.floor_done = False
+
+    def step(
+        self, t: float, p_falling: float, p_fallen: float
+    ) -> tuple[str, float] | None:
+        self.recent.append(p_falling)
+        s = max(self.recent)
+        if p_fallen > FALLEN_P:
+            if self.floor_start is None:
+                self.floor_start, self.floor_done = t, False
+        else:
+            self.floor_start = None
+
+        level, score = None, s
         if (
-            floor_start is not None
-            and not floor_done
-            and ti - floor_start >= on_floor_s
+            self.floor_start is not None
+            and not self.floor_done
+            and t - self.floor_start >= self.on_floor_s
         ):
-            level, score, floor_done = ON_FLOOR, fi, True
-        elif si >= t_high:
+            level, score, self.floor_done = ON_FLOOR, p_fallen, True
+        elif s >= self.t_high:
             level = FALL
-        elif si >= t_low:
+        elif s >= self.t_low:
             level = CHECK
         if level is None:
-            continue
+            return None
         rank = LEVEL_RANK[level]
-        if ti - last_t < REFRACTORY_S and rank <= last_rank:
-            continue
-        out.append((float(ti), level, float(score)))
-        last_t, last_rank = ti, rank
-    return out
+        if t - self.last_t < REFRACTORY_S and rank <= self.last_rank:
+            return None
+        self.last_t, self.last_rank = t, rank
+        return level, float(score)
 
 
 def alerts_from_scores(
@@ -182,21 +234,15 @@ def alerts_from_scores(
     rows = []
     df = scores_df.sort_values(["clip_id", "end_frame"], kind="stable")
     for clip_id, g in df.groupby("clip_id", sort=True):
-        s = (
-            g["p_falling"]
-            .rolling(SCORE_WINDOWS, min_periods=1)
-            .max()
-            .to_numpy(np.float64)
-        )
-        for t_s, level, score in _clip_alerts(
+        state = AlertState(t_high, t_low, on_floor_seconds)
+        for t_s, p_falling, p_fallen in zip(
             g["t_s"].to_numpy(np.float64),
-            s,
+            g["p_falling"].to_numpy(np.float64),
             g["p_fallen"].to_numpy(np.float64),
-            t_high,
-            t_low,
-            on_floor_seconds,
         ):
-            rows.append((clip_id, t_s, level, score))
+            hit = state.step(float(t_s), float(p_falling), float(p_fallen))
+            if hit is not None:
+                rows.append((clip_id, float(t_s), hit[0], hit[1]))
     out = pd.DataFrame(rows, columns=ALERT_COLUMNS)
     return out.astype(
         {"clip_id": np.int32, "t_s": np.float32, "level": str, "score": np.float32}

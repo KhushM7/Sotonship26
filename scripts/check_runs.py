@@ -40,11 +40,23 @@ def check_run(run: str) -> list[tuple[bool, str]]:
     def item(ok: bool, what: str) -> None:
         out.append((bool(ok), what))
 
-    for name in ("model.pt", "feat_stats.npz", "confusion.png", "calibration.csv"):
+    ens = m / "ensemble.yaml"
+    if ens.exists():
+        # an ensemble (10_ensemble.py) has no weights of its own: check its members
+        members = yaml.safe_load(ens.read_text())["members"]
+        for mem in members:
+            for name in ("model.pt", "feat_stats.npz"):
+                p = REPO / "models" / mem / name
+                item(p.exists(), f"member models/{mem}/{name} exists")
+        names: tuple[str, ...] = ("calibration.csv",)
+    else:
+        names = ("model.pt", "feat_stats.npz", "confusion.png", "calibration.csv")
+    for name in names:
         item((m / name).exists(), f"models/{run}/{name} exists")
 
     cfg_p = m / "config.yaml"
     commit = ""
+    run_cfg: dict = {}
     try:
         run_cfg = yaml.safe_load(cfg_p.read_text())["run"]
         commit = str(run_cfg.get("git_commit", ""))
@@ -56,14 +68,18 @@ def check_run(run: str) -> list[tuple[bool, str]]:
     except Exception as e:  # noqa: BLE001
         item(False, f"config.yaml readable ({e})")
 
-    try:
-        cols = pd.read_csv(m / "train_log.csv", nrows=1).columns
-        item(
-            any(c.startswith("val_all_") for c in cols),
-            "train_log.csv has val_all_* columns",
-        )
-    except Exception as e:  # noqa: BLE001
-        item(False, f"train_log.csv readable ({e})")
+    for c in run_cfg.get("member_commits", []):
+        item(not c.endswith("-dirty"), f"member git_commit {c!r} clean")
+
+    if not ens.exists():
+        try:
+            cols = pd.read_csv(m / "train_log.csv", nrows=1).columns
+            item(
+                any(c.startswith("val_all_") for c in cols),
+                "train_log.csv has val_all_* columns",
+            )
+        except Exception as e:  # noqa: BLE001
+            item(False, f"train_log.csv readable ({e})")
 
     logits_p = m / "val_logits.npy"
     try:

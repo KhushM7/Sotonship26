@@ -1,7 +1,7 @@
 """Calibrate one run on val: temperature, then FALL and CHECK thresholds.
 
     python scripts/07_calibrate.py --run e3_tcn_s1
-    python scripts/07_calibrate.py --run e3_tcn_s1 --target-fall 0.85 --target-any 0.95
+    python scripts/07_calibrate.py --run e3_tcn_s1 --target-fall 0.85 --target-any 0.92
 
 1. Temperature: one scalar T fitted on models/<run>/val_logits.npy by minimising
    NLL (LBFGS from T = 1); expected calibration error (15 bins) before and after.
@@ -11,7 +11,10 @@
    - t_high = the highest threshold whose FALL sensitivity is >= --target-fall
      (val holds about 45 min of normal activity, too little for the plan's
      "<= 0.5 false FALLs per hour" rule, so we fix sensitivity and report the
-     false-alert rate with its bootstrap interval instead);
+     false-alert rate with its bootstrap interval instead). The defaults (FALL 80%,
+     FALL-or-CHECK 88%) are reachable on val: E1-E7 used 90% / 95%, which no run
+     reached, so the plateau fallback picked the noisiest, lowest threshold and
+     t_low collapsed onto t_high (no CHECK band);
    - t_low = the highest threshold <= t_high whose FALL-or-CHECK sensitivity is
      >= --target-any; if none reaches it, the one with the best sensitivity.
 4. Writes models/<run>/thresholds.yaml (read by 08_evaluate.py, the live demo and
@@ -152,8 +155,8 @@ def pick_t_low(
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--run", required=True, help="folder name in models/")
-    ap.add_argument("--target-fall", type=float, default=0.90)
-    ap.add_argument("--target-any", type=float, default=0.95)
+    ap.add_argument("--target-fall", type=float, default=0.80)
+    ap.add_argument("--target-any", type=float, default=0.88)
     ap.add_argument(
         "--plateau",
         type=float,

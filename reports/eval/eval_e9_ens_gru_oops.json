@@ -1,0 +1,420 @@
+{
+  "model": "e9_ens_gru",
+  "split": "oops",
+  "thresholds": {
+    "t_high": 0.6,
+    "t_low": 0.3,
+    "source": "models\\e9_ens_gru\\thresholds.yaml"
+  },
+  "unscored_clips": 6,
+  "systems": {
+    "e9_ens_gru (one threshold)": {
+      "sensitivity_alarm": 0.5598290598290598,
+      "sensitivity_any": 0.5598290598290598,
+      "false_alarms_per_h": 229.95156713097515,
+      "checks_per_h": 0.0,
+      "coverage": 1.0,
+      "median_latency_alarm_s": 0.5963332653045654,
+      "median_latency_any_s": 0.5963332653045654,
+      "events": 1170,
+      "clips": 818,
+      "hours": 2.6477958333333333,
+      "normal_hours": 0.8871433343344265,
+      "alarms": 714,
+      "checks": 0,
+      "false_alarms": 204,
+      "ci": {
+        "sensitivity_alarm": [
+          0.5266338673761531,
+          0.598076960114015
+        ],
+        "sensitivity_any": [
+          0.5266338673761531,
+          0.598076960114015
+        ],
+        "false_alarms_per_h": [
+          201.92949007898414,
+          258.93892759631024
+        ],
+        "checks_per_h": [
+          0.0,
+          0.0
+        ],
+        "coverage": [
+          1.0,
+          1.0
+        ],
+        "median_latency_alarm_s": [
+          0.5482709050178528,
+          0.6623957484960555
+        ]
+      }
+    },
+    "e9_ens_gru (CHECK band)": {
+      "sensitivity_alarm": 0.5598290598290598,
+      "sensitivity_any": 0.5957264957264957,
+      "false_alarms_per_h": 229.95156713097515,
+      "checks_per_h": 201.2995085534981,
+      "coverage": 0.7621017790649566,
+      "median_latency_alarm_s": 0.5963332653045654,
+      "median_latency_any_s": 0.4853334426879883,
+      "events": 1170,
+      "clips": 818,
+      "hours": 2.6477958333333333,
+      "normal_hours": 0.8871433343344265,
+      "alarms": 714,
+      "checks": 533,
+      "false_alarms": 204,
+      "ci": {
+        "sensitivity_alarm": [
+          0.5266338673761531,
+          0.598076960114015
+        ],
+        "sensitivity_any": [
+          0.5631038438504298,
+          0.6338582363036788
+        ],
+        "false_alarms_per_h": [
+          201.92949007898414,
+          258.93892759631024
+        ],
+        "checks_per_h": [
+          188.57022403068683,
+          214.69259013847736
+        ],
+        "coverage": [
+          0.7492587751847842,
+          0.7760880522036786
+        ],
+        "median_latency_alarm_s": [
+          0.5482709050178528,
+          0.6623957484960555
+        ]
+      }
+    },
+    "rule baseline (E0)": {
+      "sensitivity_alarm": 0.18547008547008548,
+      "sensitivity_any": 0.18547008547008548,
+      "false_alarms_per_h": 34.94362049539328,
+      "checks_per_h": 0.0,
+      "coverage": 1.0,
+      "median_latency_alarm_s": 2.9443321228027344,
+      "median_latency_any_s": 2.9443321228027344,
+      "events": 1170,
+      "clips": 818,
+      "hours": 2.6477958333333333,
+      "normal_hours": 0.8871433343344265,
+      "alarms": 181,
+      "checks": 0,
+      "false_alarms": 31,
+      "ci": {
+        "sensitivity_alarm": [
+          0.15635605291740115,
+          0.21638043494292203
+        ],
+        "sensitivity_any": [
+          0.15635605291740115,
+          0.21638043494292203
+        ],
+        "false_alarms_per_h": [
+          23.003936377204514,
+          47.100544591969346
+        ],
+        "checks_per_h": [
+          0.0,
+          0.0
+        ],
+        "coverage": [
+          1.0,
+          1.0
+        ],
+        "median_latency_alarm_s": [
+          2.742333173751831,
+          3.2883334159851074
+        ]
+      }
+    }
+  },
+  "breakdown_system": "e9_ens_gru (CHECK band)",
+  "breakdown": [
+    {
+      "group": "dataset",
+      "value": "OOPS",
+      "sensitivity_alarm": 0.5598290598290598,
+      "sensitivity_any": 0.5957264957264957,
+      "false_alarms_per_h": 229.95156713097515,
+      "checks_per_h": 201.2995085534981,
+      "coverage": 0.7621017790649566,
+      "median_latency_alarm_s": 0.5963332653045654,
+      "median_latency_any_s": 0.4853334426879883,
+      "events": 1170,
+      "clips": 818,
+      "hours": 2.6477958333333333,
+      "normal_hours": 0.8871433343344265,
+      "alarms": 714,
+      "checks": 533,
+      "false_alarms": 204,
+      "ci": {
+        "sensitivity_alarm": [
+          0.5266338673761531,
+          0.598076960114015
+        ],
+        "sensitivity_any": [
+          0.5631038438504298,
+          0.6338582363036788
+        ],
+        "false_alarms_per_h": [
+          201.92949007898414,
+          258.93892759631024
+        ],
+        "checks_per_h": [
+          188.57022403068683,
+          214.69259013847736
+        ],
+        "coverage": [
+          0.7492587751847842,
+          0.7760880522036786
+        ],
+        "median_latency_alarm_s": [
+          0.5482709050178528,
+          0.6623957484960555
+        ]
+      }
+    },
+    {
+      "group": "qc_pass",
+      "value": "False",
+      "sensitivity_alarm": 0.511864406779661,
+      "sensitivity_any": 0.5627118644067797,
+      "false_alarms_per_h": 232.55931764564536,
+      "checks_per_h": 184.64274738069403,
+      "coverage": 0.7597292724196277,
+      "median_latency_alarm_s": 0.9063334465026855,
+      "median_latency_any_s": 0.6953332424163818,
+      "events": 295,
+      "clips": 199,
+      "hours": 0.6878147222222222,
+      "normal_hours": 0.21929888905896078,
+      "alarms": 169,
+      "checks": 127,
+      "false_alarms": 51,
+      "ci": {
+        "sensitivity_alarm": [
+          0.4492865024115025,
+          0.5729185675182481
+        ],
+        "sensitivity_any": [
+          0.4967476100288601,
+          0.6224687410175338
+        ],
+        "false_alarms_per_h": [
+          179.00437038438963,
+          295.161156476312
+        ],
+        "checks_per_h": [
+          161.9371108098722,
+          211.1143397235841
+        ],
+        "coverage": [
+          0.732098906743794,
+          0.7869926139361227
+        ],
+        "median_latency_alarm_s": [
+          0.6953332424163818,
+          1.3153328895568848
+        ]
+      }
+    },
+    {
+      "group": "qc_pass",
+      "value": "True",
+      "sensitivity_alarm": 0.576,
+      "sensitivity_any": 0.6068571428571429,
+      "false_alarms_per_h": 229.09526474670633,
+      "checks_per_h": 207.14485343679618,
+      "coverage": 0.7628696604600219,
+      "median_latency_alarm_s": 0.5503333210945129,
+      "median_latency_any_s": 0.44933319091796875,
+      "events": 875,
+      "clips": 619,
+      "hours": 1.959981111111111,
+      "normal_hours": 0.6678444452754655,
+      "alarms": 545,
+      "checks": 406,
+      "false_alarms": 153,
+      "ci": {
+        "sensitivity_alarm": [
+          0.5341469538014872,
+          0.6209363885088919
+        ],
+        "sensitivity_any": [
+          0.5640421808804569,
+          0.6495862884160757
+        ],
+        "false_alarms_per_h": [
+          200.58551412225998,
+          262.9685792870913
+        ],
+        "checks_per_h": [
+          192.97101598221442,
+          222.77493005550213
+        ],
+        "coverage": [
+          0.7465674192322836,
+          0.7779025641923334
+        ],
+        "median_latency_alarm_s": [
+          0.4933333396911621,
+          0.6073331832885742
+        ]
+      }
+    }
+  ],
+  "clips": 818,
+  "events": 1170,
+  "hours": 2.6477958333333333,
+  "normal_hours": 0.8871433343344265,
+  "windows": {
+    "macro_f1": 0.4266181831227539,
+    "per_class_f1": [
+      0.6639696033676844,
+      0.5704861738658955,
+      0.16157929661579296,
+      0.31043765864164297
+    ],
+    "confusion": [
+      [
+        12145,
+        3456,
+        1468,
+        4102
+      ],
+      [
+        1726,
+        6313,
+        380,
+        1487
+      ],
+      [
+        464,
+        1450,
+        487,
+        1022
+      ],
+      [
+        1077,
+        1007,
+        270,
+        2018
+      ]
+    ],
+    "windows": 38872
+  },
+  "curve": [
+    {
+      "band": 0.0,
+      "t_low": 0.6,
+      "coverage": 1.0,
+      "missed_falls": 0.44017094017094016,
+      "false_alarms_per_h": 229.95156713097515,
+      "checks_per_h": 0.0
+    },
+    {
+      "band": 0.05,
+      "t_low": 0.55,
+      "coverage": 0.9131707317073171,
+      "missed_falls": 0.42991452991452994,
+      "false_alarms_per_h": 229.95156713097515,
+      "checks_per_h": 62.693655572008794
+    },
+    {
+      "band": 0.1,
+      "t_low": 0.5,
+      "coverage": 0.8588560885608856,
+      "missed_falls": 0.4213675213675213,
+      "false_alarms_per_h": 229.95156713097515,
+      "checks_per_h": 107.25902519548492
+    },
+    {
+      "band": 0.15,
+      "t_low": 0.45,
+      "coverage": 0.8273862622658341,
+      "missed_falls": 0.41538461538461535,
+      "false_alarms_per_h": 229.95156713097515,
+      "checks_per_h": 135.20679936613945
+    },
+    {
+      "band": 0.2,
+      "t_low": 0.4,
+      "coverage": 0.8028658271819366,
+      "missed_falls": 0.41025641025641024,
+      "false_alarms_per_h": 229.95156713097515,
+      "checks_per_h": 158.24482942573303
+    },
+    {
+      "band": 0.25,
+      "t_low": 0.35,
+      "coverage": 0.7809322033898305,
+      "missed_falls": 0.40512820512820513,
+      "false_alarms_per_h": 229.95156713097515,
+      "checks_per_h": 179.77216898961558
+    },
+    {
+      "band": 0.3,
+      "t_low": 0.3,
+      "coverage": 0.7621017790649566,
+      "missed_falls": 0.4042735042735043,
+      "false_alarms_per_h": 229.95156713097515,
+      "checks_per_h": 201.2995085534981
+    },
+    {
+      "band": 0.35,
+      "t_low": 0.25,
+      "coverage": 0.751937984496124,
+      "missed_falls": 0.40512820512820513,
+      "false_alarms_per_h": 229.95156713097515,
+      "checks_per_h": 214.14037776704208
+    },
+    {
+      "band": 0.4,
+      "t_low": 0.2,
+      "coverage": 0.744758064516129,
+      "missed_falls": 0.40854700854700854,
+      "false_alarms_per_h": 229.95156713097515,
+      "checks_per_h": 225.09288386094724
+    },
+    {
+      "band": 0.45,
+      "t_low": 0.15,
+      "coverage": 0.7362330407023144,
+      "missed_falls": 0.40683760683760684,
+      "false_alarms_per_h": 229.95156713097515,
+      "checks_per_h": 234.9123720830691
+    },
+    {
+      "band": 0.5,
+      "t_low": 0.1,
+      "coverage": 0.7289608850256816,
+      "missed_falls": 0.40683760683760684,
+      "false_alarms_per_h": 229.95156713097515,
+      "checks_per_h": 244.3541876812632
+    },
+    {
+      "band": 0.55,
+      "t_low": 0.05,
+      "coverage": 0.7249901922322479,
+      "missed_falls": 0.4094017094017094,
+      "false_alarms_per_h": 229.95156713097515,
+      "checks_per_h": 251.15229491196294
+    },
+    {
+      "band": 0.6,
+      "t_low": 0.0,
+      "coverage": 0.7278778386844166,
+      "missed_falls": 0.41880341880341876,
+      "false_alarms_per_h": 229.95156713097515,
+      "checks_per_h": 253.04065803160177
+    }
+  ],
+  "curve_png": "eval_e9_ens_gru_oops_coverage.png"
+}

@@ -8,3 +8,6 @@ e5_gru,gru,GMDCSA24 caucafall le2i mcfd occu of-syn,True,False,760f123,Khush_Meh
 e5_tcn,tcn,GMDCSA24 caucafall le2i mcfd occu of-syn,True,False,760f123,Khush_Mehta,GMDCSA24 caucafall le2i mcfd occu of-syn,3,e5_tcn_s1 e5_tcn_s2 e5_tcn_s3,3,0.8128,0.0003,0.7505,0.0084,0.8128,0.0003,6.7,19.2
 e6_gru,gru,GMDCSA24 le2i mcfd occu of-syn,True,False,760f123,Khush_Mehta,GMDCSA24 le2i mcfd occu of-syn,3,e6_gru_s1 e6_gru_s2 e6_gru_s3,3,0.8134,0.0065,0.7197,0.0087,0.8093,0.0063,6.0,12.9
 e7_gru,gru,GMDCSA24 caucafall le2i mcfd occu of-syn,True,True,760f123,Khush_Mehta,GMDCSA24 caucafall le2i mcfd occu of-syn,3,e7_gru_s1 e7_gru_s2 e7_gru_s3,3,0.8123,0.0064,0.7265,0.0056,0.8123,0.0064,7.3,19.8
+e8_gru,gru,GMDCSA24 caucafall le2i mcfd occu of-syn,True,False,b0033ef,Khush_Mehta,GMDCSA24 caucafall le2i mcfd occu of-syn,3,e8_gru_s1 e8_gru_s2 e8_gru_s3,3,0.8083,0.0009,0.7305,0.0153,0.8083,0.0009,8.3,46.3
+e9_gru,gru,GMDCSA24 caucafall le2i mcfd occu of-syn,True,False,b0033ef,Khush_Mehta,GMDCSA24 caucafall le2i mcfd occu of-syn,3,e9_gru_s1 e9_gru_s2 e9_gru_s3,3,0.8089,0.0023,0.7194,0.0025,0.8089,0.0023,5.7,46.2
+e9_tcn,tcn,GMDCSA24 caucafall le2i mcfd occu of-syn,True,False,b0033ef,Khush_Mehta,GMDCSA24 caucafall le2i mcfd occu of-syn,3,e9_tcn_s1 e9_tcn_s2 e9_tcn_s3,3,0.8124,0.0063,0.7462,0.0128,0.8124,0.0063,9.0,56.3
