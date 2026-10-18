@@ -105,7 +105,6 @@ def test_config_is_schema_v2() -> None:
         "ctx_cap_s",
         "edge_margin",
         "descent_speed",
-        "hidden_check_s",
         "min_visible_kp",
         "lookback_frames",
         "aug_p_fall",

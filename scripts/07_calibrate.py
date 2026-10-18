@@ -20,7 +20,7 @@
 4. Writes models/<run>/thresholds.yaml (read by 08_evaluate.py, the live demo and
    write_scores) and models/<run>/calibration.csv (the sweep).
 
-Only val is used. Test, staged_test and OOPS stay closed until the model is frozen.
+Only val is used. Test and OOPS stay closed until the model is frozen.
 """
 
 import argparse

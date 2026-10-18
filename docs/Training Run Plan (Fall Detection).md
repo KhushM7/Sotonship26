@@ -1,5 +1,7 @@
 # Training Run Plan – who trains what, where
 
+> **Final status (18 Oct 2026).** Done: data, QC, windows, training E1–E9, calibration, evaluation on val, test and OOPS, live demo, `DATA_CARD.md`. Frozen model: `models/e9_ens_gru` (test: 82.5% of falls caught at 35.7 false FALL/h). Skipped for time: the disappearance tracker, the staged recording session (no `staged_test`) and the care-home-subset experiment. Results: README section 9.
+
 Prep for after Dev B's model code is merged (M9 `models.py` / `06_train.py`, M10 `calibrate.py`) and S7/S11 are done. It decides which laptop runs which training jobs, gives the run queue with commands, and fixes the rules that keep results comparable. Fill in the measured numbers as they arrive; nothing here changes the experiments themselves (see the master plan, Phase 5–6).
 
 ## 1. The two machines
@@ -129,4 +131,4 @@ A run folder is a few MB: `model.pt`, `feat_stats.npz`, `config.yaml`, `train_lo
 - [x] Wave 2 (E4–E5) done; best of E4/E5 chosen ✅ *E5 GRU: 44.0 (37.3–50.6) false FALL/h at ≥ 75% sens. vs E4 GRU 148.3; E5 TCN tied with E5 GRU, which won the tie-break on elderly sens. (90.7% vs 82.7%). Numbers in `reports/eval/summary_val.md`*
 - [x] Wave 3 (E6–E7) done; E7 outcome written into `reports/occlusion_realism.md` ✅ *E7 dropped (no clear gain on OCCU val); E6 showed no drop on CAUCAFall val (4/4 falls every seed; val too small to show one)*
 - [x] Measured times copied into the master plan's "Training time" table ✅ *Laptop A, 17–18 Oct*
-- [ ] Final model calibrated, frozen and evaluated once on test, staged_test and OOPS ⏳ *chosen on val: `e5_gru_s1`, calibrated (T 0.97, t_high 0.30); test, staged_test and OOPS not opened yet*
+- [x] Final model calibrated, frozen and evaluated once on test, staged_test and OOPS ✅ *`e9_ens_gru` (18 Oct): test 82.5% at 35.7 false FALL/h, OOPS 56.0%; no staged_test*

@@ -4,7 +4,7 @@
 
 It is being built for older or injured people who are **alone and unsupervised** in care homes, hospital rooms and their own homes, where a fall can go unnoticed for a long time.
 
-> **Status (17 Oct 2026, hackathon in progress).** Data pipeline, quality control, occlusion handling (parts 1 and 3), windows, models, training, the evaluator and the rule baseline are built and tested. The first nine models (E1–E3, three seeds each) are trained and evaluated on validation. Still to come: calibration (`07_calibrate.py`), the disappearance tracker (`tracker.py`, occlusion part 2), experiments E4–E8, the staged test set recorded in our own room, the live webcam demo (`09_live.py`), the final test-set evaluation and `DATA_CARD.md`. Sections below say clearly which parts are done and which are planned.
+> **Status (18 Oct 2026): model side complete.** Data pipeline, quality control, occlusion handling, windows, models, training (experiments E1–E9, three seeds each), calibration, the evaluator, the rule baseline and the live webcam demo are built and tested. The frozen model is **`e9_ens_gru`** (an ensemble of three GRUs), evaluated once on the held-out test set and on real accidents (OOPS): **82.5% of test falls caught at 35.7 false FALL alerts per hour, against 59.1% at 173.8 for the rule baseline** (section 9). Data sources and licences: [`DATA_CARD.md`](DATA_CARD.md). The carer app and what happens after an alert live outside this repository.
 
 ---
 
@@ -18,7 +18,7 @@ It is being built for older or injured people who are **alone and unsupervised**
 6. [Pipeline stages in detail](#6-pipeline-stages-in-detail)
 7. [Handling occlusion (falls behind furniture)](#7-handling-occlusion-falls-behind-furniture)
 8. [Evaluation: how we measure it](#8-evaluation-how-we-measure-it)
-9. [Results so far](#9-results-so-far)
+9. [Results](#9-results)
 10. [Known limitations and open issues](#10-known-limitations-and-open-issues)
 11. [Experiments](#11-experiments)
 12. [Repository layout](#12-repository-layout)
@@ -55,7 +55,7 @@ fallsense aims for the useful middle: **a camera that only ever sees a stick fig
 - **Who:** older people and people recovering from injury or illness.
 - **Where:** a single room – care-home bedroom, hospital side room, a room at home.
 - **When:** unsupervised periods, including at night.
-- **Who gets the alert:** a carer, nurse or family member (the carer app and escalation are outside this repository; fallsense produces one JSON line per alert for them to consume).
+- **Who gets the alert:** a carer, nurse or family member (the carer app and escalation are outside this repository; fallsense produces the alert level, time and score for them to consume).
 
 ---
 
@@ -75,19 +75,15 @@ From those probabilities it raises one of four outputs (event logic in `src/fall
 | Output | When | What a carer should do |
 | --- | --- | --- |
 | **silent** | fall score below the lower threshold | nothing |
-| **CHECK** | fall score between the two thresholds, or the person vanished after going down (tracker, planned) | look at the room or call in – the system is unsure |
+| **CHECK** | fall score between the two thresholds | look at the room or call in – the system is unsure |
 | **FALL** | fall score above the upper threshold | go now |
 | **ON FLOOR** | `fallen` probability above 0.5 continuously for `on_floor_seconds` (20 s in the demo, 5 s on public clips) | go now – the person has not got up |
 
 The fall score is `p_falling`, smoothed as the maximum over the last 3 evaluation windows (0.6 s) so a single flickering window cannot trigger or cancel an alert. After any alert there is a 30-second refractory period, so one fall is one alert; only a higher level (CHECK → FALL → ON FLOOR) can fire inside it.
 
-Each alert is printed as one JSON line, which is the interface a carer app would consume:
+The live demo prints one line per alert (time, level, score) and, with `--record`, saves them to `alerts.csv` next to the per-window probabilities; that is the hand-over point to a carer app.
 
-```json
-{"room": "demo", "time": "...", "level": "CHECK", "score": 0.58, "source": "pose", "model": "gru-v1"}
-```
-
-The CHECK band is deliberate: it is the measurable way the system "knows when to hand over". Section 8 shows how we trade coverage (decisions made without a human) against errors.
+The frozen model uses FALL at 0.60 and CHECK from 0.30 (`models/e9_ens_gru/thresholds.yaml`). The CHECK band is deliberate: it is the measurable way the system "knows when to hand over". Section 8 shows how we trade coverage (decisions made without a human) against errors.
 
 ---
 
@@ -118,10 +114,7 @@ flowchart LR
     I --> J[07_calibrate<br/>temperature, FALL/CHECK thresholds]
     J --> K[(scores/*.parquet<br/>Contract 4)]
     K --> L[08_evaluate<br/>event metrics, intervals,<br/>breakdowns, coverage curve]
-    D --> M[tracker<br/>hidden-after-falling CHECK]
-    M --> N[(alerts/tracker<br/>Contract 5)]
-    N --> L
-    I --> O[09_live<br/>webcam, skeleton on black,<br/>JSON alerts]
+    J --> O[09_live<br/>webcam, skeleton on black,<br/>alerts]
 ```
 
 In one line: **video → 15 fps frames → MediaPipe skeletons → quality control → 2-second windows with "last seen" context → small neural network → calibrated probabilities → FALL / CHECK / ON FLOOR / silent.**
@@ -149,7 +142,7 @@ All public data comes through the [OmniFall](https://huggingface.co/datasets/sim
 
 **OF-Syn subset.** OF-Syn has 12,000 clips in six age groups (toddler, child, teen, young adult, middle-aged, elderly; 2,000 each). We kept **all 2,000 elderly clips** – the population this is for – plus a third of every other group, 5,335 clips in total (`configs/of_syn_subset.csv`). That gives 202 elderly test clips instead of 54 with an even sample.
 
-Skipped: UP-Fall (slow frame-to-video rebuild), CMDFall (access by email only) and EDF (same lab and setup as OCCU without the occlusion). These remain options if more staged indoor data is needed.
+Skipped: UP-Fall (slow frame-to-video rebuild), CMDFall (access by email only) and EDF (same lab and setup as OCCU without the occlusion). These remain options if more staged indoor data is needed. Licences, citations, per-split counts and every exclusion are in [`DATA_CARD.md`](DATA_CARD.md).
 
 ### 5.2 Labels
 
@@ -173,7 +166,7 @@ OmniFall's cross-subject (`-cs`) splits keep every person in only one of train, 
 | Split | Clips in index | Clips used for windows | Windows |
 | --- | --- | --- | --- |
 | train | 4,749 | 4,647 (QC-passing) | 53,429 |
-| val | 600 | 589 (QC-passing) | 6,237 |
+| val | 600 | 589 (QC-passing) | 12,454 |
 | test | 635 | 635 (all) | 14,673 |
 | OOPS (test only) | 818 | 818 (all) | 38,872 |
 
@@ -237,7 +230,7 @@ Each example is a **30-frame (2 s) window labelled by what happens at its end**,
 2. **`falling`** if at least 5 of the last 20 frames are labelled falling (falls are short, so a majority rule would almost never produce this class).
 3. Otherwise the most common label of the last 8 frames.
 
-Window ends: train and val every 8 frames, plus every 2 frames within 1 s of a fall; test every 3 frames (0.2 s, for latency). Each window carries the 13 keypoints in pixels, the frame size, a per-frame `present` flag and the four "last seen" context values (section 7), computed over the whole clip so a window can know that someone vanished 8 seconds earlier. `falling` makes up 29.8% of train windows.
+Window ends: train every 8 frames, plus every 2 frames within 1 s of a fall; val, test and OOPS every 3 frames (0.2 s), like the live system. Each window carries the 13 keypoints in pixels, the frame size, a per-frame `present` flag and the four "last seen" context values (section 7), computed over the whole clip so a window can know that someone vanished 8 seconds earlier. `falling` makes up 29.8% of train windows.
 
 ### 6.6 Features – `src/fallsense/features.py`
 
@@ -264,9 +257,10 @@ Both are deliberately small so they run in real time on a laptop CPU:
 ### 6.8 Training – `scripts/06_train.py`, `src/fallsense/dataset.py`
 
 - **Loss:** cross-entropy with label smoothing 0.05 and class weights `w_c = sqrt(N / (4 n_c))` renormalised to mean 1.
-- **Optimiser:** AdamW, learning rate 2e-3, weight decay 1e-4, batch 256, cosine decay over at most 40 epochs, gradient clipping 1.0.
-- **Model selection:** each epoch on validation by average precision of falling-vs-rest, tie-broken by 4-class macro F1; early stop after 8 epochs without improvement.
-- **Speed:** about 14 s per epoch on core staged sets on an 8-core laptop; a full run takes about 3 minutes.
+- **Optimiser:** AdamW, batch 256, cosine decay over at most 40 epochs, gradient clipping 1.0. Defaults are learning rate 2e-3 and weight decay 1e-4 (E1–E7); the final recipe (E8/E9) uses `--lr 1e-3 --weight-decay 1e-2`, and E9 adds `--low-weight 1.5` (1.5× class weight on `controlled_low`, the class most often confused with falling).
+- **Model selection:** each epoch on validation windows from the training datasets. E1–E7 use average precision of falling-vs-rest (`--select ap`, tie-broken by macro F1); E8/E9 use the event metric (`--select event`): fewest false FALL alerts per hour while catching at least 80% of falls. Early stop after 8 epochs without improvement.
+- **Ensembles:** `scripts/10_ensemble.py` averages the softmax of several runs (for example the three seeds of one experiment) and is calibrated and evaluated like a single run; `calibrate.Scorer` loads either.
+- **Speed:** about 14 s per epoch on core staged sets on an 8-core laptop (about 3 minutes per run); about 50 s per epoch on all data with five runs in parallel.
 - **Augmentation** (on raw keypoints, before features, so every augmented example goes through the same feature code):
 
 | Augmentation | Probability | Range | Simulates |
@@ -283,11 +277,11 @@ Both are deliberately small so they run in real time on a laptop CPU:
 
 Every run folder holds `model.pt`, `feat_stats.npz`, a copy of the config and run arguments, `train_log.csv`, validation logits and a confusion matrix.
 
-### 6.9 Calibration and alerts – `src/fallsense/calibrate.py` (event logic done; `07_calibrate.py` planned)
+### 6.9 Calibration and alerts – `src/fallsense/calibrate.py`, `scripts/07_calibrate.py`
 
-- `write_scores(run, windows)` runs a model over a windows file and writes Contract 4 scores.
-- `alerts_from_scores(scores, thresholds)` is the **one** implementation of FALL / CHECK / ON FLOOR used by the evaluator, calibration and the live demo (rules in section 2).
-- Planned in `07_calibrate.py`: temperature scaling (one scalar fitted on validation logits) and the search for the two thresholds on validation only, saved to `thresholds.yaml`.
+- `write_scores(run, windows)` runs a model (or ensemble) over a windows file and writes Contract 4 scores.
+- `AlertState` is the **one** implementation of FALL / CHECK / ON FLOOR (rules in section 2). `alerts_from_scores` runs it over every clip for the evaluator and calibration; the live demo steps it one window at a time.
+- `07_calibrate.py` fits one temperature on validation logits, then picks the two thresholds on validation only: `t_high` is the highest threshold that still catches 80% of falls with FALL, `t_low` the highest at or below `t_high` that catches 88% with FALL or CHECK (thresholds swept 0.05–0.95; if no threshold reaches a target, the one with the best sensitivity). Results go to `thresholds.yaml` with a `calibration` block (targets, sensitivities, false alerts per hour with interval).
 
 ### 6.10 Rule baseline – `src/fallsense/baseline.py`, `scripts/baseline_e0.py`
 
@@ -299,19 +293,19 @@ The honest yardstick: *a person whose keypoint box is wider than tall and whose 
 
 A person who falls behind a bed or sofa disappears from the skeleton stream. The skeleton file records "no person", but not *how* they vanished – and that is what separates a hidden fall from someone leaving the room. Measured on real clips: disappearances during OCCU falls happen mid-frame (median 0.35 of the frame from the nearest border) with the hips dropping fast; disappearances outside falls happen near a border while moving slowly.
 
-Three parts, used together (`src/fallsense/occlusion.py`, pure numpy, the same code offline and live):
+Three parts were designed (`src/fallsense/occlusion.py`, pure numpy, the same code offline and live); the first is in the final model:
 
 1. **Disappearance context as model input (done).** Every frame carries four "last seen" values – seconds since the pose was last present (capped at 20 s), last hip height, last hip vertical speed in **body heights per second** (so near and far cameras read the same) and last distance to the frame edge. The model can therefore tell "dropped fast mid-frame, then gone" from "walked to the edge, then gone". `LastSeenState` updates them one frame at a time for the live demo.
-2. **Disappearance tracker as a safety net (planned, `tracker.py`).** A rule-based state machine (visible / left the frame / hidden after going down) that raises CHECK when someone has been hidden after going down for `hidden_check_s` seconds. It needs no training and is scored alone and merged with the model. `find_disappearances` already classifies every gap of at least 1 s after at least 5 visible frames as `left` or `hidden_down` (lost more than 10% of the frame from every border while the hips drop faster than 0.30 body heights/s). Detector blips under 5 frames and dropouts of 1–2 frames are smoothed out first, so one hidden fall is one disappearance.
-3. **Simulated occlusion in training (done; experiment E7 pending).** Visible falls **and** normal activity from every training set are hidden on the fly: an occluder edge rises part-way down the hips' drop (`rise`) or a box covers 20–50% of the body (`box`); hidden keypoints become MediaPipe-like guesses that follow the body, with 3–8 frames of flicker before the loss. Occluding normal activity matters as much as occluding falls – otherwise the model would learn "vanished means fallen".
+2. **Disappearance tracker as a safety net (not built).** A rule-based state machine that would raise CHECK when someone has been hidden after going down for a few seconds was planned and dropped for time. What exists is the classification it would have used, which QC relies on: `find_disappearances` classifies every gap of at least 1 s after at least 5 visible frames as `left` or `hidden_down` (lost more than 10% of the frame from every border while the hips drop faster than 0.30 body heights/s). Detector blips under 5 frames and dropouts of 1–2 frames are smoothed out first, so one hidden fall is one disappearance.
+3. **Simulated occlusion in training (built, tested in E7, not used in the final model).** Visible falls **and** normal activity from every training set are hidden on the fly: an occluder edge rises part-way down the hips' drop (`rise`) or a box covers 20–50% of the body (`box`); hidden keypoints become MediaPipe-like guesses that follow the body, with 3–8 frames of flicker before the loss. Occluding normal activity matters as much as occluding falls – otherwise the model would learn "vanished means fallen".
 
-**Realism check** (`scripts/occlusion_realism.py` → `reports/occlusion_realism.md`): with the 0.30 threshold, 83% of real OCCU hidden falls are classified `hidden_down`, with 47 false `hidden_down` gaps outside falls on train clips (43 of them on MCFD's poor-detection cameras). Simulated hidden falls match OCCU on edge distance and keypoint loss order but vanish at a lower hip speed (36% classified `hidden_down`). The simulation was accepted as it is on 17 Oct; experiment E7 decides whether it helps, and its outcome will be recorded in the same report.
+**Realism check** (`scripts/occlusion_realism.py` → `reports/occlusion_realism.md`): with the 0.30 threshold, 83% of real OCCU hidden falls are classified `hidden_down`, with 47 false `hidden_down` gaps outside falls on train clips (43 of them on MCFD's poor-detection cameras). Simulated hidden falls match OCCU on edge distance and keypoint loss order but vanish at a lower hip speed (36% classified `hidden_down`). The simulation was accepted as it is on 17 Oct and judged by experiment E7: it moved the operating point (fewer false alerts, slightly fewer falls caught) without improving the trade-off, and its OCCU gain came from one seed, so it was dropped (outcome in the same report). Hidden falls stay the main weakness: the final model catches 50% of OCCU test falls.
 
 ---
 
 ## 8. Evaluation: how we measure it
 
-`scripts/08_evaluate.py` (`src/fallsense/metrics.py`) scores every system – models, the rule baseline and, once built, the tracker – exactly the same way. Alerts always come from `alerts_from_scores`, never reimplemented.
+`scripts/08_evaluate.py` (`src/fallsense/metrics.py`) scores every system – models, ensembles and the rule baseline – exactly the same way. Alerts always come from `alerts_from_scores`, never reimplemented.
 
 ### 8.1 Definitions
 
@@ -337,8 +331,8 @@ FALL and ON FLOOR both count as alarms. 95% intervals come from a bootstrap over
 
 `reports/eval/eval_<run>_<split>.md` (and `.json`, `_coverage.png`):
 
-- the run with one threshold, with its CHECK band, and the rule baseline (plus "+ tracker" rows once tracker alerts exist);
-- a breakdown by dataset, by `qc_pass`, by OF-Syn age group and BMI band, and for the staged set by lighting and occlusion;
+- the run with one threshold, with its CHECK band, and the rule baseline;
+- a breakdown by dataset, by `qc_pass`, and by OF-Syn age group and BMI band;
 - the 4-class confusion matrix and macro F1 over windows;
 - the **coverage–error curve**: the CHECK band is widened step by step and, at each width, missed falls and false FALL alerts are plotted against coverage. This is the trade-off between "the system decides on its own" and "it asks a human" in one picture.
 
@@ -346,73 +340,108 @@ FALL and ON FLOOR both count as alarms. 95% intervals come from a bootstrap over
 
 ### 8.3 Rules we follow
 
-Tune and select on validation only. Freeze model, temperature and thresholds. Run test, staged_test and OOPS **once**, at the end. If anything changes after seeing test numbers, the report says so.
+Tune and select on validation only. Freeze model, temperature and thresholds. Run test and OOPS **once**, at the end. If anything changes after seeing test numbers, the report says so. This was followed: test and OOPS were opened once, on 18 Oct, for three systems named before any test number was seen (the frozen `e9_ens_gru`, the earlier pick `e5_gru_s1` as a reference, and the rule baseline). Nothing was tuned afterwards.
 
 ---
 
-## 9. Results so far
+## 9. Results
 
-All numbers are on the **validation split** (589 clips, 144 falls, 1.0 h of video), with thresholds not yet calibrated (temperature 1, FALL at 0.5, no CHECK band). Means over three seeds, range in brackets. Full tables: `reports/eval/summary_val.md`.
+### 9.1 Final model on held-out data
 
-| | E0 rule baseline | E1 GRU | E2 GRU + augmentation | E3 TCN + augmentation |
-| --- | --- | --- | --- | --- |
-| Window AP, falling vs rest | 0.28 | 0.82 (0.81–0.83) | 0.82 (0.81–0.84) | **0.83** (0.83–0.83) |
-| Window macro F1 (4 classes) | 0.23 | 0.64 | 0.66 | 0.66 |
-| Falls detected by FALL, all val | 68.8% | 72.2% | **74.5%** | 72.0% |
-| False FALL alerts per hour, all val | 168 | 94 | 103 | **73** |
-| Falls detected, core staged sets | 68.4% | 97.4% | 98.2% | **99.1%** |
-| Falls detected, OF-Syn (not trained on) | 81.1% | 67.0% | **70.7%** | 66.7% |
-| Falls detected, OF-Syn elderly | 80.0% | 56.0% | **57.3%** | 41.3% |
-| Falls detected, OCCU (hidden falls) | 0% | 41.7% | 39.6% | 37.5% |
-| Fewest false alerts/h at ≥ 80% detected | – | 372 | 279 | **213** |
+The frozen model is **`e9_ens_gru`**: the average of three GRUs (`e9_gru_s1..s3`, experiment E9), temperature 0.935, FALL at 0.60, CHECK from 0.30. It was chosen on validation only; test (people never seen in training) and OOPS (real accidents, never trained on) were then opened once. 95% intervals from a bootstrap over clips. Full reports: `reports/eval/eval_e9_ens_gru_{val,test,oops}.md`.
 
-What this says so far:
+| | Rule baseline (E0) | `e5_gru_s1` (earlier pick) | **`e9_ens_gru` (frozen)** |
+| --- | --- | --- | --- |
+| **Test** (635 clips, 154 falls, 0.9 h normal activity) | | | |
+| Falls caught by FALL | 59.1% (48.0–69.4) | 86.4% (78.2–93.4) | **82.5%** (74.7–89.3) |
+| Falls caught by FALL or CHECK | 59.1% | 86.4% | **87.0%** (79.4–93.7) |
+| False FALL alerts per hour | 173.8 (147–200) | 112.5 (93–132) | **35.7** (25–48) |
+| CHECK requests per hour | – | – | 101.8 |
+| Window macro F1 (4 classes) | – | 0.725 | **0.747** |
+| **OOPS** (818 real accidents, 1,170 falls) | | | |
+| Falls caught by FALL | 18.5% | 47.6% | **56.0%** (52.7–59.8) |
+| False FALL alerts per hour | 34.9 | 399.0 | 230.0 |
 
-- **Every learned model beats the hand rule clearly** – window AP 0.82–0.83 against 0.28, and 97–100% of falls caught on the people-held-out staged sets against 68%.
-- **E1–E3 are within seed noise of each other.** The core validation sets are saturated (38 falls, 97–100% caught), so they cannot separate the models. TCN is the most stable and makes the fewest false alerts at matched sensitivity; GRU with augmentation is best on older bodies.
-- **OF-Syn and elderly people are the weak spot** – expected, since E1–E3 never trained on OF-Syn. Experiment E5 adds it.
-- **Hidden falls** are caught 38–42% of the time by the model alone (the rule: 0%). The tracker (occlusion part 2) is designed to close this gap.
-- Most false alerts come from deliberate low movements (OF-Syn lie-downs, "other" activities including kneeling and crawling, GMDCSA24 daily activities): a falling-vs-controlled-low confusion.
-- Validation windows from Dev B's laptop and Dev A's laptop are identical; the same model gives the same logits to within 2×10⁻⁷ on both.
+On test by group (FALL only): Le2i 95.5%, CAUCAFall 88.9%, GMDCSA24 88.2%, OF-Syn 83.3%, **OF-Syn elderly 93.5%** (31 falls), OCCU hidden falls 50.0% (16 falls).
 
-**Read the false-alert rates as rough.** Validation contains only about 45 minutes of normal activity (7 minutes in the core sets), so one extra false alert moves the rate by about 8 per hour. Real deployments run for days; long normal-activity recordings are needed before the rate can be trusted (section 10).
+What this says:
+
+- **The learned model beats the hand rule on every measure that matters**: 23 more points of falls caught on test with a fifth of the false alarms, and three times as many real accidents caught on OOPS.
+- **The final recipe cut false alarms by two thirds** against the earlier pick (35.7 vs 112.5 per hour on test) for 4 points of FALL sensitivity, which the CHECK band wins back (87.0% caught by FALL or CHECK).
+- **Validation predicted test well**: 81.2% at 38.6 false/h on val, 82.5% at 35.7 on test.
+- **Older bodies are not left behind**: 93.5% of elderly OF-Syn test falls are caught, the highest of any age group.
+- **Real accidents are much harder**: OOPS is sport, stunts and young people filmed on phones, often with several people in view; 56% of falls are caught with many false alarms. This is the gap a real deployment would have to close with real data.
+- **Hidden falls remain the main weakness**: half the OCCU falls behind the bed are caught.
+
+### 9.2 How we got there (validation)
+
+Every experiment, three seeds each, compared on validation (589 clips, 144 falls) at a matched operating point: the fewest false FALL alerts per hour while catching at least 75% of falls. Mean over seeds, range in brackets; full table in `reports/eval/summary_val.md`.
+
+| Experiment | Change | Window AP (falling) | Fewest false / h at ≥ 75% caught |
+| --- | --- | --- | --- |
+| E0 | rule baseline | – | – (catches 68.8% at 168 / h) |
+| E1 | GRU, core staged sets | 0.61 | 175 (133–196) |
+| E2 | + augmentation | 0.64 | 131 (113–168) |
+| E3 | TCN instead of GRU | 0.64 | 282 (152–454) |
+| E4 | + OCCU (real occlusion) | 0.68 | 148 (133–173) |
+| E5 | + OF-Syn (synthetic, all ages) | 0.81 | 44.0 (37.3–50.6) |
+| E6 | E5 without CAUCAFall (unseen home) | 0.81 | 40.4 (36.0–49.3) |
+| E7 | E5 + simulated occlusion | 0.81 | 49.7 (48.0–52.0) |
+| E8 | E5 with lr 1e-3, weight decay 1e-2, epoch chosen by false alerts | 0.80 | 35.5 (29.3–38.6) |
+| E9 | E8 + 1.5× weight on `controlled_low` | 0.78 | 34.2 (33.3–36.0) |
+| **E9 ensemble** | average of the three E9 GRUs | 0.81 | **25.3** |
+
+- **OF-Syn was the biggest single gain** (E4 → E5): diverse synthetic bodies, including 2,000 elderly clips, cut false alarms by two thirds.
+- **E6** showed no drop when a whole home (CAUCAFall) is held out, though CAUCAFall val has only 4 falls.
+- **E7** (simulated occlusion) did not improve the trade-off and was dropped (`reports/occlusion_realism.md`).
+- **E8/E9** made the model less eager to call deliberate lying and sitting down a fall – the main source of false alarms.
+- **Ensembling** three seeds beat every single seed. Ensembles of the E9 TCNs (25.3) and of all six E9 models (28.0) did no better; the GRU ensemble was frozen for the lowest false alarms on the core sets and cheaper live inference.
+- E8/E9 choose epochs on the same validation event metric they are judged on, so their validation numbers flatter them slightly; the test result above confirms the gain is real.
+
+### 9.3 Live demo
+
+`09_live.py` runs the frozen model on a laptop webcam at 14–15 fps on CPU (pose 14 ms per frame), drawing only the skeleton on black. It uses the same code as evaluation: replaying validation clips through it reproduces the offline scores to within 1e-4.
+
+**Read the false-alert rates as rough.** Validation has 0.75 h and test 0.90 h of normal activity, so one extra false alert moves the rate by about 1 per hour on test and the intervals are wide. Real deployments run for days; long normal-activity recordings are needed before the rate can be trusted (section 10).
 
 ---
 
 ## 10. Known limitations and open issues
 
-Tracked in `reports/data_scope_review.md` (data) and the plans (training), to revisit once more models exist:
-
-| Issue | Effect | Plan |
+| Issue | Effect | What would fix it |
 | --- | --- | --- |
-| **Little normal-activity time in validation** (≈45 min) | false-alert rates per hour are very noisy; the planned "≤ 0.5 false FALLs per hour" threshold rule cannot be met on this data (on E1 it would set FALL at 0.95 and catch 12% of falls) | calibrate to a target sensitivity instead and report the false-alert rate with its interval; add long no-fall recordings |
-| **Model selection on all of validation** while E1–E4 train only on core sets | the best epoch is picked mostly on OF-Syn, which those models never see | select on validation windows from the training datasets |
-| **Validation windows use the training strides** (8 frames, 2 near falls) | more chances to alert near falls, fewer chances to alert falsely elsewhere – flatters event metrics | build validation windows every 3 frames like test |
-| **Latency on OF-Syn** | 81 of 144 validation falls start in the clip's first 0.5 s; the first window ends at 1.93 s, so every model reports the same median | measure latency only on falls with ≥ 2 s of video before them |
-| **Wrong person tracked** (`num_poses: 1`) | in multi-person scenes MediaPipe sometimes follows a bystander; about 1% of labelled falls show a skeleton that stays upright throughout, mostly in OOPS (test only) | candidate `label_conflict` QC reason for train/val; single-person scope documented |
-| **Multi-person, merged skeletons, animals** | at least ~10% of OOPS clips and ~3% of OF-Syn clips have two or more people; occasional dog skeletons and merged skeletons | per-frame anatomy check (implausible frames are 3.5–4.3% on clean sets, 10.2% on OOPS) to treat as "no pose" |
-| **Domain mismatch** | 52% of OF-Syn clips are outdoor and 37% show under-18s; OOPS is sport and stunts | experiment E8: care-home subset vs all data, judged on in-domain clips |
-| **Kneeling, squatting and crawling mapped to `upright`** | after some falls the person crawls; the label says upright while the body is low | candidate re-mapping to `controlled_low` (about 2% of OF-Syn) |
-| **Short public clips** | ON FLOOR is evaluated at 5 s instead of the demo's 20 s | staged recordings with longer end states |
-| **MCFD cameras 4 and 5** | person found in only 34–44% of fall frames | excluded by QC where coverage fails |
+| **Little normal-activity time** (0.75 h val, 0.90 h test) | false-alert rates per hour have wide intervals; the original "≤ 0.5 false FALLs per hour" target cannot be measured on this data | calibrate to a target sensitivity (done) and report the rate with its interval; add long no-fall recordings such as Toyota Smarthome Untrimmed |
+| **Hidden falls** | 50% of OCCU test falls caught; simulated occlusion (E7) did not help | the planned disappearance tracker, or more real occluded falls |
+| **Real accidents** | 56% of OOPS falls caught, 230 false FALLs per hour | real-world training data; OOPS itself is non-commercial and test-only here |
+| **No recordings of our own room** | the staged test set was dropped for time, so there is no number for the demo room, camera and lighting | record and label a staged session; until then, rehearse with `09_live.py --record` |
+| **Latency on OF-Syn** | 81 of 144 validation falls start in the clip's first 0.5 s; the first window ends at 1.93 s, so the median latency reads 1.93 s for every model | measure latency only on falls with ≥ 2 s of video before them |
+| **Wrong person tracked** (`num_poses: 1`) | in multi-person scenes MediaPipe sometimes follows a bystander; about 1% of labelled falls show a skeleton that stays upright throughout, mostly in OOPS | single-person scope (documented); multi-person tracking |
+| **Multi-person, merged skeletons, animals** | at least ~10% of OOPS clips and ~3% of OF-Syn clips have two or more people | per-frame anatomy check to treat implausible frames as "no pose" |
+| **Domain mismatch** | 52% of OF-Syn clips are outdoors and 37% show under-18s; OOPS is sport and stunts | a care-home-only training subset (considered in `reports/data_scope_review.md`, not run) |
+| **Kneeling, squatting and crawling mapped to `upright`** | after some falls the person crawls; the label says upright while the body is low | re-map to `controlled_low` (about 2% of OF-Syn) |
+| **Short public clips** | ON FLOOR is evaluated at 5 s instead of the demo's 20 s | longer recordings with long end states |
+| **Full body must be in view** | a seated close-up on a laptop camera hides hips and legs and gives spurious CHECKs | mount the camera to see the whole room (the live display warns when the legs are missing) |
 
 ---
 
 ## 11. Experiments
 
-One row each in `reports/experiments.csv` (owned by Dev B), three seeds per row; how and where they run is in `docs/Training Run Plan (Fall Detection).md`.
+One row each in `reports/experiments.csv`, three seeds per row; how and where they ran is in `docs/Training Run Plan (Fall Detection).md`, results in section 9.2.
 
-| Id | Model | Train data | Augment | Question | Status |
+| Id | Model | Train data | Change | Question | Outcome |
 | --- | --- | --- | --- | --- | --- |
-| E0 | rule baseline | core staged | – | What does a hand rule achieve? | done (val) |
-| E1 | GRU | core staged | no | Does learning beat the rule? | done (val) |
-| E2 | GRU | core staged | yes | Does augmentation help on held-out people? | done (val) |
-| E3 | TCN | core staged | yes | GRU or TCN? | done (val) |
-| E4 | best of E2/E3 | core + OCCU | yes | Does real occlusion data help? | planned |
-| E5 | best of E2/E3 | core + OCCU + OF-Syn | yes | Does synthetic diversity help, especially on older and heavier bodies? | planned |
-| E6 | best config | all except CAUCAFall | yes | How much does accuracy drop in an unseen home? | planned |
-| E7 | best config | as best of E4/E5 | yes + simulated occlusion | Does simulated occlusion help on hidden falls without more false alerts elsewhere? | planned |
-| E8 | best config | care-home subset vs all | yes | Do outdoor and under-18 clips help or hurt in-domain? | deferred until a model exists |
+| E0 | rule baseline | core staged | – | What does a hand rule achieve? | the yardstick |
+| E1 | GRU | core staged | no augmentation | Does learning beat the rule? | yes, clearly |
+| E2 | GRU | core staged | augmentation | Does augmentation help on held-out people? | small gain |
+| E3 | TCN | core staged | augmentation | GRU or TCN? | tied; both carried forward |
+| E4 | GRU, TCN | core + OCCU | augmentation | Does real occlusion data help? | small gain |
+| E5 | GRU, TCN | core + OCCU + OF-Syn | augmentation | Does synthetic diversity help, especially on older and heavier bodies? | **biggest gain**; GRU chosen |
+| E6 | GRU | E5 without CAUCAFall | augmentation | How much does accuracy drop in an unseen home? | no visible drop (val too small to be sure) |
+| E7 | GRU | as E5 | + simulated occlusion | Does simulated occlusion help on hidden falls? | no clear gain; dropped |
+| E8 | GRU | as E5 | lr 1e-3, weight decay 1e-2, event-based epoch choice | Can training settings cut false alarms? | yes, modest and consistent |
+| E9 | GRU, TCN | as E5 | E8 + 1.5× `controlled_low` weight; ensembles | Fewer "lying down = fall" errors? | **frozen: `e9_ens_gru`** |
+
+"Core staged" means GMDCSA24, CAUCAFall, Le2i and MCFD. A planned experiment training on a care-home-only subset (no outdoor or under-18 clips) was not run; see `reports/data_scope_review.md`.
 
 ---
 
@@ -432,7 +461,7 @@ src/fallsense/
   windows.py               # Contract 3, window labelling rule, split checks    (Dev B)
   dataset.py               # torch Dataset, augmentation, ClipBank              (Dev B)
   models.py                # FallGRU, FallTCN                                   (Dev B)
-  calibrate.py             # write_scores, alerts_from_scores (event logic)     (Dev B)
+  calibrate.py             # Scorer (runs and ensembles), write_scores, AlertState (Dev B)
   scores.py                # Contract 4 read/write/validate                     (Dev B)
   metrics.py               # event metrics, bootstrap, window metrics           (Dev A)
   baseline.py              # rule baseline (E0)                                 (Dev A)
@@ -443,31 +472,38 @@ scripts/
   04_qc_skeletons.py       # QC -> index.csv, plots, exclusions, sample videos  (Dev A)
   05_build_windows.py      # index + skeletons + labels -> windows              (Dev B)
   06_train.py              # train GRU/TCN, select on val                       (Dev B)
+  07_calibrate.py          # temperature + FALL/CHECK thresholds on val         (Dev B)
   08_evaluate.py           # event evaluation of one run on one split          (Dev A)
   eval_summary.py          # compare all runs and seeds                         (Dev A)
   baseline_e0.py           # tune the rule on train, write its scores           (Dev A)
   occlusion_realism.py     # real vs simulated disappearances report            (Dev A)
+  09_live.py               # webcam or video demo, skeleton on black, --record
+  10_ensemble.py           # average several runs into one ensemble run
+  check_runs.py            # checks every run folder is complete and from a clean commit
+  experiments_table.py     # reports/experiments.csv from the run folders
+  run_queue.ps1, run_one.ps1  # parallel training queue (train, calibrate, evaluate)
 tests/                     # pytest: labels, occlusion, features, windows, dataset, model, calibrate, scores, metrics
 reports/
   qc/                      # QC plots, excluded clips, sample videos (videos not committed)
   eval/                    # evaluation reports per run and the run comparison
   scores/<run>/            # thresholds.yaml per run (score .parquet files are not committed)
   occlusion_realism.md     # occlusion realism check and E7 outcome
-  data_scope_review.md     # deferred data cuts, E8 plan, metrics to recompute
+  data_scope_review.md     # data cuts considered and not made
 docs/                      # master build plan, Dev A plan, Dev B plan, training run plan, occlusion ideas
 models/pose/               # MediaPipe .task files (downloaded, not committed)
+models/<run>/              # model.pt, feat_stats.npz, thresholds.yaml, logs (not committed; shared by drive)
 .githooks/pre-push         # ruff format --check and ruff check before every push
 .claude/                   # Claude Code hooks (see section 16)
 data/                      # junction to C:\fall-data (not committed)
 ```
 
-Planned additions: `07_calibrate.py`, `09_live.py`, `tracker.py` with `tests/test_tracker.py`, `record_staged.py`, `label_tool.py`, `DATA_CARD.md` (currently empty).
+`DATA_CARD.md` at the root lists every dataset, licence, citation, clip count and exclusion.
 
 ---
 
 ## 13. Data contracts
 
-Fixed before any code was written so both developers could work in parallel. A change needs agreement from both and a `schema_version` bump in `configs/default.yaml` (currently 2).
+Fixed before any code was written so both developers could work in parallel. A fifth contract, for disappearance-tracker alerts, was planned and dropped with the tracker. A change needs agreement from both and a `schema_version` bump in `configs/default.yaml` (currently 2).
 
 | Contract | File | Writer → reader | Content |
 | --- | --- | --- | --- |
@@ -475,7 +511,6 @@ Fixed before any code was written so both developers could work in parallel. A c
 | 2 – index | `data/skeletons/index.csv` | Dev A → Dev B | one row per clip: `dataset, path, subject, cam, split, n_frames, duration_s, width, height, det_rate, det_rate_fall, det_rate_covered, det_rate_fall_covered, hidden_frac_fall, n_hidden_gaps, id_jumps, qc_pass, qc_reason`. `clip_id` = row number. |
 | 3 – windows | `data/windows/{split}.npz` | Dev B → training, evaluation | `kp` (N,30,13,3) pixel x, y, visibility; `wh` (N,2); `y` (N,) 0–3; `clip_id`; `end_frame`; `present` (N,30); `ctx` (N,30,4). OOPS goes to `oops.npz`. |
 | 4 – scores | `reports/scores/{model}/{split}.parquet` | models, baseline → evaluator | `clip_id, end_frame, t_s, p_upright, p_falling, p_fallen, p_controlled_low`, one row per window, probabilities summing to 1 |
-| 5 – tracker alerts | `reports/alerts/tracker/{split}.parquet` | tracker → evaluator | `clip_id, t_s, level` (always CHECK), `reason` (`hidden_down`) |
 
 ---
 
@@ -592,9 +627,9 @@ Typical times on the larger laptop: QC of all 6,802 clips about 10 s; building e
 
 | | Dev A – data in | Dev B – model out |
 | --- | --- | --- |
-| Owns | inventory, extraction, labels, QC, occlusion, tracker, rule baseline, evaluator, staged test set, data card | repo setup, config, features, windows, dataset and augmentation, models, training, calibration, live demo, experiments log |
+| Owns | inventory, extraction, labels, QC, occlusion, rule baseline, evaluator, data card; E5–E9 training | repo setup, config, features, windows, dataset and augmentation, models, training, calibration, live demo, experiments log, E1–E4 training |
 | Videos on own laptop | Le2i, OCCU, OF-Syn, OOPS | GMDCSA24, CAUCAFall, MCFD |
-| Modules | `io_video`, `pose`, `labels`, `occlusion`, `metrics`, `baseline`, `tracker` | `config`, `features`, `windows`, `dataset`, `models`, `calibrate`, `scores` |
+| Modules | `io_video`, `pose`, `labels`, `occlusion`, `metrics`, `baseline` | `config`, `features`, `windows`, `dataset`, `models`, `calibrate`, `scores` |
 
 Only small skeleton files and run folders move between laptops (through a shared drive); each laptop extracted skeletons from its own videos.
 
@@ -603,11 +638,11 @@ Only small skeleton files and run folders move between laptops (through a shared
 ## 18. Responsible use, privacy and licences
 
 - **Not a medical device.** fallsense is a hackathon prototype. It has not been clinically validated and must not replace care staff, nurse call systems or clinical judgement.
-- **Staged data.** Almost all training falls are performed by actors or generated synthetically. Real falls of frail older people look different – often slower, partial and against furniture. Results on OOPS (real accidents, mostly young people) and our own staged recordings are reported separately for this reason.
+- **Staged data.** Almost all training falls are performed by actors or generated synthetically. Real falls of frail older people look different – often slower, partial and against furniture. Results on OOPS (real accidents, mostly young people) are reported separately for this reason.
 - **Privacy.** The system processes skeletons, not identities, and the live display never shows the camera image. In any real deployment the people being monitored (or those legally acting for them) must consent, and local data-protection and care-regulation rules apply.
-- **Fairness.** Results are broken down by OF-Syn age group and BMI band so weaker performance on any group is visible rather than averaged away. The current models are weakest on elderly bodies (section 9) – the group this is for – and the next experiments target that.
-- **Staged test recordings.** Everyone who appears signs a consent form first; falls are performed only onto crash mats with a spotter; every clip is labelled "staged".
-- **Licences.** OmniFall labels are **CC BY-NC-SA 4.0** and several video sources are research or non-commercial only (GMDCSA24 MIT, CAUCAFall CC BY 4.0, Le2i research use, MCFD citation requested, OCCU per its Zenodo terms, OF-Syn and OOPS non-commercial). **A commercial model would need its own labelled data.** Each dataset's citation and terms go into `DATA_CARD.md` (`omnifall cite <dataset>`, `omnifall sources <dataset>`).
+- **Fairness.** Results are broken down by OF-Syn age group and BMI band so weaker performance on any group is visible rather than averaged away. Early models were weakest on elderly bodies; after adding all 2,000 elderly OF-Syn clips (E5), the frozen model catches 93.5% of elderly test falls, its best age group (section 9).
+- **Demo rehearsals.** Anyone falling for the demo does so onto a mat with a spotter. `09_live.py --record` saves only skeletons, scores and alerts, never images.
+- **Licences.** OmniFall labels are **CC BY-NC-SA 4.0** and several video sources are research or non-commercial only (GMDCSA24 MIT, CAUCAFall CC BY 4.0, Le2i research use, MCFD citation requested, OCCU per its Zenodo terms, OF-Syn and OOPS non-commercial). **A commercial model would need its own labelled data.** Each dataset's citation and terms are in [`DATA_CARD.md`](DATA_CARD.md).
 - **MediaPipe** pose models are Apache 2.0.
 
 ---
@@ -620,13 +655,13 @@ This project was built with the help of **Claude Code** (Anthropic's coding assi
 
 ## 20. Roadmap
 
-1. **Calibration** (`07_calibrate.py`): temperature scaling and the FALL/CHECK thresholds on validation, with a sensitivity-based target suited to the short validation set.
-2. **Training fixes** before the next round: select epochs on validation from the training datasets, build validation windows at the evaluation stride, then retrain E1–E3 (about 30 minutes).
-3. **Disappearance tracker** (`tracker.py`, occlusion part 2), tuned on validation, with "+ tracker" rows in every evaluation.
-4. **Experiments E4–E7**, then E8 and the data-scope decisions in `reports/data_scope_review.md`.
-5. **Staged test set:** 40–60 clips recorded in the demo room – falls forward, backward, sideways, off a chair, partly and fully hidden; walking behind furniture, sitting, kneeling, lying down on purpose – across two camera positions and two lighting levels.
-6. **Live demo** (`09_live.py`): webcam at 640×480, skeleton on black, the four probabilities as bars, the alert level and an ON FLOOR timer, JSON alert lines, at least 10 fps on a laptop CPU.
-7. **Final evaluation** of the frozen model on test, staged_test and OOPS, once each; `DATA_CARD.md`; tag `v1-hackathon`.
+Done for the hackathon: data pipeline, QC, occlusion context, windows, GRU/TCN training (E1–E9), ensembles, calibration, evaluation on val, test and OOPS, live demo, data card. Next steps if the project continues:
+
+1. **Long normal-activity recordings** (for example Toyota Smarthome Untrimmed, or hours of our own room) to measure false alerts per hour properly.
+2. **Hidden falls:** the disappearance tracker (a CHECK when someone vanishes mid-frame while going down) or more real occluded falls.
+3. **Our own room:** a consented, labelled staged recording session in the target setting as a test set.
+4. **Real-world falls:** non-commercial data limits use; a deployable model needs its own labelled data (`DATA_CARD.md`).
+5. **Carer app integration** of the live alerts (outside this repository).
 
 ---
 
@@ -640,6 +675,6 @@ This project was built with the help of **Claude Code** (Anthropic's coding assi
 | `docs/Training Run Plan (Fall Detection).md` | which laptop trains what, the run queue and comparability rules |
 | `docs/occlusion-ideas.md` | the occlusion analysis and every idea considered |
 | `reports/occlusion_realism.md` | real vs simulated disappearances, thresholds, E7 outcome |
-| `reports/data_scope_review.md` | deferred data cuts, E8 plan, metrics to recompute |
+| `reports/data_scope_review.md` | data cuts considered and not made |
 | `reports/eval/summary_val.md` | all evaluated runs compared |
 | `reports/qc/` | QC plots and excluded clips |

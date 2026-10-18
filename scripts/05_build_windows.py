@@ -4,7 +4,7 @@
     python scripts/05_build_windows.py --from-inventory --datasets GMDCSA24
                                                           # dry run before S7
 
-Train and val use qc_pass clips only; test, staged_test and OOPS use every clip
+Train and val use qc_pass clips only; test and OOPS use every clip
 (clip_id joins back to index.csv, which keeps qc_pass). Only train uses the
 dense near-fall stride; val is cut every stride_eval frames like test. OOPS goes to its own
 oops.npz so it is never mixed into test. The dry run builds a provisional index
