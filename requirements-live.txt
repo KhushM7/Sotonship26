@@ -1,0 +1,11 @@
+# Just the live webcam demo (scripts/09_live.py, scripts/live.ps1): pose, model and
+# display. Versions as in requirements.lock; PyTorch is the CPU build.
+#   uv pip install -r requirements-live.txt
+--extra-index-url https://download.pytorch.org/whl/cpu
+mediapipe==1.1.1
+opencv-contrib-python==5.0.0.93  # MediaPipe needs this build; never add opencv-python too
+torch==2.14.1
+numpy==2.4.6
+pandas==3.0.6
+pyyaml==6.0.3
+av==18.1.0

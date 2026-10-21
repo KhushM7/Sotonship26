@@ -25,8 +25,10 @@ The video is only written to disk; the window on screen stays skeleton-only.
 
 import argparse
 import csv
+import shutil
 import sys
 import time
+import urllib.request
 from collections import deque
 from collections.abc import Iterator
 from datetime import datetime
@@ -55,6 +57,10 @@ POSE_MODELS = {
     "full": REPO / "models" / "pose" / "pose_landmarker_full.task",
     "lite": REPO / "models" / "pose" / "pose_landmarker_lite.task",
 }
+POSE_URL = (
+    "https://storage.googleapis.com/mediapipe-models/pose_landmarker/"
+    "pose_landmarker_{0}/float16/latest/pose_landmarker_{0}.task"
+)
 # skeleton edges within the 13 config keypoints (nose, shoulders, elbows, wrists,
 # hips, knees, ankles)
 EDGES = [(1, 2), (1, 3), (3, 5), (2, 4), (4, 6), (1, 7), (2, 8), (7, 8),
@@ -153,6 +159,20 @@ def webcam_frames(
         cap.release()
 
 
+def pose_model(name: str) -> Path:
+    """The MediaPipe pose model, downloaded on first use (Apache 2.0, a few MB)."""
+    path = POSE_MODELS[name]
+    if not path.exists():
+        print(f"downloading the MediaPipe pose model ({name}) to {path} ...")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".part")
+        url = POSE_URL.format(name)
+        with urllib.request.urlopen(url, timeout=60) as r, open(tmp, "wb") as f:
+            shutil.copyfileobj(r, f)
+        tmp.replace(path)
+    return path
+
+
 def list_cameras(max_index: int = 4) -> None:
     """Print each camera index that returns frames: size, frame rate, brightness and
     whether a person is detected (pick the one that sees the room)."""
@@ -163,7 +183,7 @@ def list_cameras(max_index: int = 4) -> None:
         for _ in range(5):
             cap.read()
         t0, n, shape, seen, last = time.monotonic(), 0, None, 0, None
-        with PoseExtractor(POSE_MODELS["lite"]) as pose:
+        with PoseExtractor(pose_model("lite")) as pose:
             while time.monotonic() - t0 < 2:
                 ok, frame = cap.read()
                 if ok:
@@ -303,7 +323,7 @@ def main() -> int:
     first = True
     started = time.monotonic()
     with PoseExtractor(
-        POSE_MODELS[args.pose],
+        pose_model(args.pose),
         min_det=pose_cfg["min_det"],
         min_presence=pose_cfg["min_presence"],
         min_track=pose_cfg["min_track"],

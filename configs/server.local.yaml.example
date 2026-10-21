@@ -1,0 +1,18 @@
+# Copy to configs/server.local.yaml (gitignored) and edit. It is merged over
+# configs/server.yaml and carers.yaml; leave out anything you don't need.
+
+# --- the public self-serve demo (what https://fall-safe.bid runs) ---------------
+# No sign-in, demo controls on the wall, alerts on the page's simulated phone.
+# ntfy is never called in this mode, whatever topics are set below.
+public_demo: true
+
+# --- publishing through Cloudflare (leave out to stay on this machine) ----------
+# tunnel: true
+# tunnel_token: <named tunnel token from the Cloudflare dashboard>
+# public_url: https://your.domain
+# trust_localhost: false        # deployed: this machine signs in too
+
+# --- a real shift (public_demo: false) -----------------------------------------
+# pins: {carer: "2468", station: "1357", presenter: "8642"}   # change these
+# carers:                       # each carer's private ntfy topic (free ntfy app)
+#   Khush Mehta: {topic: fallsense-khush-<random>}

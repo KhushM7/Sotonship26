@@ -4,9 +4,10 @@ from typing import Any
 
 import yaml
 
-DATA = Path(os.environ["FALL_DATA"])
-
 _REPO_ROOT = Path(__file__).resolve().parents[2]
+
+# the data folder; the webcam demo needs none, so a fresh clone runs without it
+DATA = Path(os.environ.get("FALL_DATA") or _REPO_ROOT / "data")
 
 
 def load_config(

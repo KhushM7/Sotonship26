@@ -4,7 +4,94 @@
 
 It is being built for older or injured people who are **alone and unsupervised** in care homes, hospital rooms and their own homes, where a fall can go unnoticed for a long time.
 
-> **Status (18 Oct 2026): model side complete.** Data pipeline, quality control, occlusion handling, windows, models, training (experiments E1–E9, three seeds each), calibration, the evaluator, the rule baseline and the live webcam demo are built and tested. The frozen model is **`e9_ens_gru`** (an ensemble of three GRUs), evaluated once on the held-out test set and on real accidents (OOPS): **82.5% of test falls caught at 35.7 false FALL alerts per hour, against 59.1% at 173.8 for the rule baseline** (section 9). Data sources and licences: [`DATA_CARD.md`](DATA_CARD.md). The carer app and what happens after an alert live outside this repository.
+> **Status (18 Oct 2026): model side complete.** Data pipeline, quality control, occlusion handling, windows, models, training (experiments E1–E9, three seeds each), calibration, the evaluator, the rule baseline and the live webcam demo are built and tested. The frozen model is **`e9_ens_gru`** (an ensemble of three GRUs), evaluated once on the held-out test set and on real accidents (OOPS): **82.5% of test falls caught at 35.7 false FALL alerts per hour, against 59.1% at 173.8 for the rule baseline** (section 9). Data sources and licences: [`DATA_CARD.md`](DATA_CARD.md). What happens after an alert (incidents, the carers' phones, escalation and the monitoring wall) is in this repository too, as the demo website (section 15.1). **Try both demos below.**
+
+## Try it
+
+There are two demos:
+
+| | **1. Live webcam demo** (`scripts/live.ps1`) | **2. Demo website** ([fall-safe.bid](https://fall-safe.bid)) |
+| --- | --- | --- |
+| What it is | **the real system, live**: your webcam, your skeleton, the model deciding in real time | **a prerecorded replay** of what happens *after* an alert: the monitoring wall and the carer's phone |
+| Runs the model? | yes, on every frame, on your CPU | no: it replays clips recorded earlier, with the scores and alerts the model produced offline |
+| Uses your camera? | yes (it never shows or saves the image) | no |
+| Needs | a clone of this repo, Python 3.11, a webcam, about 5 minutes | a browser |
+
+### 1. Live webcam demo: detect your own fall in real time
+
+The frozen model (`e9_ens_gru`) runs on your laptop's CPU at about 15 frames per second. Every frame, MediaPipe turns the camera image into a 13-point skeleton, and the model reads the last 2 seconds of it. The window shows **only your skeleton, on black**. The camera image is never displayed, and it is not saved unless you ask for a recording.
+
+**Set up once.** You need [`uv`](https://docs.astral.sh/uv/getting-started/installation/) (it fetches Python 3.11 for you) and git:
+
+```powershell
+git clone https://github.com/KhushM7/Sotonship26.git
+cd Sotonship26
+uv venv --python 3.11 .venv
+uv pip install -r requirements-live.txt     # MediaPipe, OpenCV, PyTorch (CPU) and friends, ~1 GB
+```
+
+The trained model is in the repository (`models/e9_ens_gru` and its three GRUs). The MediaPipe pose model (a few MB) downloads itself on the first run. No datasets are needed.
+
+**Run it.**
+
+```powershell
+.\scripts\live.ps1                                               # Windows
+.venv/bin/python scripts/09_live.py --run e9_ens_gru --t-low 0.6 # macOS / Linux
+```
+
+A window called *FallSense (skeleton only)* opens:
+
+| On screen | Meaning |
+| --- | --- |
+| green **OK** | no alert |
+| amber **CHECK** | possible fall, worth a look (shown only with `-TLow 0.3`, see below) |
+| red **FALL** + score | fall detected; each alert stays up for 6 s |
+| purple **ON FLOOR** | still down 20 s after the fall |
+| bars at the bottom | the model's upright / falling / fallen probabilities, live |
+| fps, top right | frames per second (aim for 14–15) |
+
+Each alert is also printed in the terminal (`33.13 s  FALL  score 0.62`).
+
+**Try this:**
+
+1. **Step back until your whole body is in view**, head to ankles. A seated close-up hides your hips and legs, so the model can't read your posture. The window then says *full body not in view - step back*.
+2. Walk around, sit down on a chair, bend to pick something up: the banner stays **OK**.
+3. **Fall safely onto something soft** (a bed, a sofa or a mattress on the floor), going down fast as a real fall does. **FALL** appears within a second or two.
+4. Stay down for 20 seconds and it escalates to **ON FLOOR**.
+5. Press **r** to reset, and **q** or **Esc** to quit (click the window first). Closing the window or Ctrl+C also stops it.
+
+Please don't fall onto a hard floor: it works just as well on a mattress.
+
+**Options** (Windows wrapper; the same flags exist on `09_live.py`, see `python scripts/09_live.py --help`):
+
+```powershell
+.\scripts\live.ps1 -List            # which cameras work, and whether each one sees a person
+.\scripts\live.ps1 -Camera 1        # use another camera
+.\scripts\live.ps1 -Lite            # lighter pose model, if it runs under 10 fps
+.\scripts\live.ps1 -TLow 0.3        # also show CHECK alerts (the model's own setting; noisier)
+.\scripts\live.ps1 -Video clip.mp4  # run it on a video file instead of the webcam
+.\scripts\live.ps1 -Record          # save skeleton, scores, alerts and the video to data\recordings\<date-time>
+```
+
+**If something goes wrong:**
+- *Can't open the camera*: close Teams, Zoom or the Camera app (only one program can use it at a time). Then try `-List` and `-Camera 1`.
+- *Low fps*: use `-Lite`, and plug the laptop in.
+- *No FALL when you fall*: make sure your whole body was in view before and during the fall. The model was trained on full-body views from a room camera, so a high, wide camera angle works best.
+- *Windows*: clone to a short path such as `C:\code` (PyTorch has deep folders), and add `--link-mode=copy` to `uv pip install` inside a OneDrive folder.
+
+How the live pipeline matches evaluation: section 9.3. All options and recording: [`RUNNING.md`](RUNNING.md) section 3.
+
+### 2. Demo website: what happens after an alert (prerecorded)
+
+**[fall-safe.bid](https://fall-safe.bid) is a prerecorded demo.** It does not use your camera and runs no model. Six care-home rooms replay real clips (public dataset videos, plus one of our own webcam sessions), each with its skeleton drawn over the video. The FALL and ON FLOOR alerts you see are the ones the frozen model produced for those exact clips offline. The website shows the rest of the system working live: incidents, the carer's phone, escalation and the monitoring wall.
+
+1. Open **https://fall-safe.bid**. If it says *The demo is asleep*, press **Wake the demo** and wait about a minute (the server sleeps when nobody is watching, to keep it free to run).
+2. Press **Start the demo**.
+3. In the **Try it** bar, replay a fall in Room 4, Room 5 or Room 6. Room 6 is a recording of our own webcam demo, with the alert it raised live.
+4. The room's carer gets the alert on their phone, shown beside the wall (or behind **Show the carer's phone** on smaller screens). Tap **I'm going**, then take the incident through *with them* and *resolved* on the phone. The wall follows.
+5. Also try **Unplug CAM 01** (a camera-offline alert), leaving an alert unanswered (it escalates to the next carer after 30 s), and **Reset**.
+
+The phone is simulated, so no real phone is notified, and everyone on the site shares one demo. How it works, and how to run it yourself: section 15.1.
 
 ---
 
@@ -400,7 +487,7 @@ Every experiment, three seeds each, compared on validation (589 clips, 144 falls
 
 ### 9.3 Live demo
 
-`09_live.py` runs the frozen model on a laptop webcam at 14–15 fps on CPU (pose 14 ms per frame), drawing only the skeleton on black. It uses the same code as evaluation: replaying validation clips through it reproduces the offline scores to within 1e-4.
+`09_live.py` (how to run it: [Try it](#1-live-webcam-demo-detect-your-own-fall-in-real-time)) runs the frozen model on a laptop webcam at 14–15 fps on CPU (pose 14 ms per frame), drawing only the skeleton on black. It uses the same code as evaluation: replaying validation clips through it reproduces the offline scores to within 1e-4.
 
 **Read the false-alert rates as rough.** Validation has 0.75 h and test 0.90 h of normal activity, so one extra false alert moves the rate by about 1 per hour on test and the intervals are wide. Real deployments run for days; long normal-activity recordings are needed before the rate can be trusted (section 10).
 
@@ -482,6 +569,15 @@ scripts/
   check_runs.py            # checks every run folder is complete and from a clean commit
   experiments_table.py     # reports/experiments.csv from the run folders
   run_queue.ps1, run_one.ps1  # parallel training queue (train, calibrate, evaluate)
+  live.ps1                 # webcam demo wrapper around 09_live.py
+  11_serve.py              # the demo website: wall, phones, log, demo controls (section 15.1)
+  12_demo_clips.py         # pick quiet idle clips for the rooms
+  13_demo_videos.py        # browser copies of each room's video -> FALL_DATA/cache/web
+  start.ps1                # run the website on this laptop (Cloudflare tunnel)
+  aws.ps1, aws/            # run it on AWS: deploy, idle stop, wake-on-visit Worker (RUNNING.md)
+src/fallsense_server/      # FastAPI server: replay rooms, incidents, escalation, ntfy, demo mode
+frontend/                  # React web app: wall, carer phone, shift log, presenter
+configs/server.yaml, rooms.yaml, carers.yaml  # the website's settings; local overrides in server.local.yaml
 tests/                     # pytest: labels, occlusion, features, windows, dataset, model, calibrate, scores, metrics
 reports/
   qc/                      # QC plots, excluded clips, sample videos (videos not committed)
@@ -491,7 +587,7 @@ reports/
   data_scope_review.md     # data cuts considered and not made
 docs/                      # master build plan, Dev A plan, Dev B plan, training run plan, occlusion ideas
 models/pose/               # MediaPipe .task files (downloaded, not committed)
-models/<run>/              # model.pt, feat_stats.npz, thresholds.yaml, logs (not committed; shared by drive)
+models/<run>/              # model.pt, feat_stats.npz, thresholds.yaml, calibration, training log
 .githooks/pre-push         # ruff format --check and ruff check before every push
 .claude/                   # Claude Code hooks (see section 16)
 data/                      # junction to C:\fall-data (not committed)
@@ -526,7 +622,7 @@ Windows (or macOS), natively, with **Python 3.11** managed by [`uv`](https://doc
    ```powershell
    uv venv --python 3.11 .venv
    .venv\Scripts\activate
-   uv pip sync requirements.lock          # exact versions shared by both laptops
+   uv pip sync requirements.lock          # exact versions shared by both laptops (just the webcam demo: requirements-live.txt)
    uv pip install -e .                     # makes `import fallsense` work
    ```
    `requirements.lock` pins the CPU build of PyTorch, MediaPipe, OpenCV, the `omnifall` package and the tools.
@@ -538,7 +634,7 @@ Windows (or macOS), natively, with **Python 3.11** managed by [`uv`](https://doc
    setx OMNIFALL_ROOT "C:\fall-data\cache\videos"
    New-Item -ItemType Junction -Path data -Target C:\fall-data
    ```
-4. Download the pose models (use `curl.exe` in PowerShell):
+4. Download the pose models (use `curl.exe` in PowerShell; `09_live.py` also downloads them itself on first use):
    ```powershell
    New-Item -ItemType Directory -Force models\pose
    curl.exe -L -o models\pose\pose_landmarker_full.task https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/latest/pose_landmarker_full.task
@@ -607,6 +703,34 @@ python -m pytest -q
 ruff format --check . ; ruff check .
 ```
 
+### 15.1 The demo website (monitoring wall and carer phones)
+
+The website is a **prerecorded demo**: it replays recorded clips and never runs the model. For the model running live on a webcam, see [Try it](#1-live-webcam-demo-detect-your-own-fall-in-real-time). The site at https://fall-safe.bid is `src/fallsense_server` (FastAPI) serving the web app in `frontend/` (React). It shows what happens after the model decides:
+
+- **Rooms** replay recorded clips (`configs/rooms.yaml`): each clip's skeleton plays in real time over its own video, with the frozen model's stored scores and alerts (`model_run: e9_ens_gru` in `configs/server.yaml`). No model runs in the server.
+- **Incidents** open on each alert. They escalate from the room's carers to everyone on shift and then to the senior nurse (`configs/carers.yaml`) until someone acknowledges.
+- **Pages:** `/` is the wall, `/phone` the carer's phone, `/log` the shift log and `/presenter` the demo controls.
+- **Two modes**, set in `configs/server.local.yaml` (copy `configs/server.local.yaml.example`):
+
+| | `public_demo: true` (the live site) | `public_demo: false` (default: a real shift) |
+| --- | --- | --- |
+| Sign-in | none | a PIN per role (carer, nurse station, presenter) |
+| Demo controls | the **Try it** bar on the wall, and `/presenter` | `/presenter` with its PIN |
+| Alerts | an ntfy-style banner on the simulated phone beside the wall; **ntfy is never called** | real pushes to each carer's phone through the free [ntfy](https://ntfy.sh) app |
+
+**Run it on your machine.** This needs the data the rooms play under `FALL_DATA`: `skeletons/index.csv` and each clip's skeleton, the browser videos in `cache/web`, and `recordings/` for Room 6. It also needs the model's scores in `reports/scores/e9_ens_gru/` (pipeline step 6 above, for the `val` and `test` splits). Score files and data are not committed, because several dataset licences forbid redistribution. Then, from the repo root:
+
+```powershell
+Copy-Item configs\server.local.yaml.example configs\server.local.yaml   # once; public_demo: true
+cd frontend; npm install; npm run build; cd ..                          # once, and after frontend changes (needs Node.js)
+python scripts\13_demo_videos.py                                        # once: the video under each room (needs ffmpeg)
+python scripts\11_serve.py --no-tunnel                                  # http://localhost:8000
+```
+
+`.\scripts\start.ps1` runs the same steps and serves through the Cloudflare tunnel when `server.local.yaml` sets one up. To move the site to another machine, `python scripts\aws\bundle.py demo.tar.gz` packs exactly what it needs (about 15 MB). Its `app/` folder is a ready checkout, and its `data/` folder is the `FALL_DATA` to point at. Share it only within the team, since it contains dataset clips.
+
+**The public site** runs on a small AWS instance (`.\scripts\aws.ps1`) behind the same Cloudflare tunnel. It stops itself once nobody has had the site open for 15 minutes. A Cloudflare Worker (`scripts/aws/wake`) shows visitors the *Wake the demo* page while it is stopped, so it costs about $1.50 a month idle. Every command, first-time set-up and the costs are in [`RUNNING.md`](RUNNING.md).
+
 The live demo runs the same code path as evaluation (replaying val clips through `09_live.py` reproduces the offline scores to 1e-4). The camera must see the whole body: a seated close-up on a laptop camera hides the hips and legs, and the model, trained on full-body views, then reads the pose as ambiguous (the display says "full body not in view").
 
 Typical times on the larger laptop: QC of all 6,802 clips about 10 s; building every window file under a minute; one training run on the core sets about 3 minutes; one evaluation about 15 s.
@@ -661,7 +785,7 @@ Done for the hackathon: data pipeline, QC, occlusion context, windows, GRU/TCN t
 2. **Hidden falls:** the disappearance tracker (a CHECK when someone vanishes mid-frame while going down) or more real occluded falls.
 3. **Our own room:** a consented, labelled staged recording session in the target setting as a test set.
 4. **Real-world falls:** non-commercial data limits use; a deployable model needs its own labelled data (`DATA_CARD.md`).
-5. **Carer app integration** of the live alerts (outside this repository).
+5. **Live camera rooms on the wall:** the website replays recorded sessions (including `09_live.py --record` ones); streaming `09_live.py` straight into a room is the next step.
 
 ---
 
@@ -669,7 +793,7 @@ Done for the hackathon: data pipeline, QC, occlusion context, windows, GRU/TCN t
 
 | Document | Content |
 | --- | --- |
-| `RUNNING.md` | commands to run the site on AWS or this laptop, and the live webcam demo |
+| `RUNNING.md` | commands to run the site on AWS or this laptop (demo mode, idle stop, wake-on-visit), and the live webcam demo |
 | `docs/Fall Detection – Camera Pipeline Build Plan.md` | the master plan: scope, stack, contracts, every phase, experiments, risks |
 | `docs/Dev A Plan – Data In (Fall Detection).md` | Dev A's step-by-step plan with progress ticks |
 | `docs/Dev B Plan – Model Out (Fall Detection).md` | Dev B's step-by-step plan with progress ticks |
