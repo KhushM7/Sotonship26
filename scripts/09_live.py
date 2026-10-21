@@ -211,6 +211,8 @@ def draw(
                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 190, 255), 2)  # fmt: skip
     cv2.putText(img, f"{fps:4.1f} fps", (w - 120, 31), cv2.FONT_HERSHEY_SIMPLEX,
                 0.6, (0, 0, 0), 2)  # fmt: skip
+    cv2.putText(img, "q quit  r reset", (w - 150, h - 12), cv2.FONT_HERSHEY_SIMPLEX,
+                0.45, (140, 140, 140), 1)  # fmt: skip
     if probs is not None:
         for k, (name, p) in enumerate(zip(CFG["classes"], probs)):
             y = h - 20 - 22 * (3 - k)
@@ -359,13 +361,14 @@ def main() -> int:
                 if not args.no_display:
                     cv2.imshow(WIN_TITLE, draw(kp13, wh, probs, banner, fps))
                     key = cv2.waitKey(1) & 0xFF
-                    if key in (ord("q"), 27):
+                    if key in (ord("q"), ord("Q"), 27):  # upper case: Caps Lock on
                         break
                     if cv2.getWindowProperty(WIN_TITLE, cv2.WND_PROP_VISIBLE) < 1:
                         break  # window closed with its X button
-                    if key == ord("r"):
+                    if key in (ord("r"), ord("R")):
                         pipe.reset()
                         banner = None
+                        print(f"{t_s:8.2f} s  reset", flush=True)
         except KeyboardInterrupt:
             print("stopped (Ctrl+C)")
     cv2.destroyAllWindows()
