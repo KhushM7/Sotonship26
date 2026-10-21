@@ -1,8 +1,10 @@
 import {
+  ArrowCounterClockwiseIcon,
   BellIcon,
   BellSlashIcon,
   DeviceMobileIcon,
   HandPalmIcon,
+  PlayIcon,
   PlugsIcon,
   ShieldCheckIcon,
   SpeakerHighIcon,
@@ -37,6 +39,7 @@ export function Wall() {
   const [started, setStarted] = useState(false);
   const [sound, setSound] = useState(true);
   const [openRoom, setOpenRoom] = useState<string | null>(null);
+  const [phone, setPhone] = useState(false); // the demo phone, on screens without room for its column
 
   useEffect(() => connect("all"), []);
   useAlertSounds(started);
@@ -51,11 +54,13 @@ export function Wall() {
   if (!hello) return <Connecting />;
 
   return (
-    <div className="grid h-dvh grid-rows-[auto_1fr] overflow-hidden">
+    <div className={`grid h-dvh overflow-hidden ${hello.demo ? "grid-rows-[auto_auto_1fr]" : "grid-rows-[auto_1fr]"}`}>
       <Header sound={sound} onSound={() => setSound((s) => !s)} />
-      <main className="grid min-h-0 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_380px]">
+      {hello.demo && <DemoBar phone={phone} onPhone={() => setPhone((p) => !p)} />}
+      <main className={`grid min-h-0 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_380px] ${hello.demo ? "2xl:grid-cols-[minmax(0,1fr)_380px_360px]" : ""}`}>
         <Cameras rooms={hello.rooms} stage={stage} onOpen={setOpenRoom} />
         <Rail active={active} />
+        {hello.demo && <DemoPhone floating={phone} onClose={() => setPhone(false)} />}
       </main>
       {openRoom && <RoomSheet roomId={openRoom} onClose={() => setOpenRoom(null)} />}
       {!started && (
@@ -460,16 +465,110 @@ function StartOverlay({ onStart }: { onStart: () => void }) {
   return (
     <div className="fixed inset-0 z-30 grid place-items-center bg-ink-950/85 backdrop-blur-sm">
       <div className="w-full max-w-md animate-rise px-6">
-        <Label>{hello.site.ward}</Label>
+        <Label>{hello.demo ? "Live demo" : hello.site.ward}</Label>
         <h1 className="mt-2 text-3xl font-medium tracking-tight">{hello.site.name}</h1>
-        <p className="mt-3 leading-relaxed text-ink-300">
-          {hello.rooms.length} rooms, each with the skeleton the model sees drawn over its camera. Falls are sent to carers' phones; this screen plays a tone too.
-        </p>
+        {hello.demo ? (
+          <div className="mt-3 flex flex-col gap-3 leading-relaxed text-ink-300">
+            <p>
+              A care-home ward of {hello.rooms.length} rooms, each replaying a real clip with the skeleton our model sees drawn over the camera. The model only ever
+              sees the skeleton.
+            </p>
+            <p>
+              Replay a fall from the bar at the top. The model raises the alert, the room's carer gets it on their phone (shown beside the wall), and you can answer it there
+              and watch the wall follow. No real phone is notified.
+            </p>
+          </div>
+        ) : (
+          <p className="mt-3 leading-relaxed text-ink-300">
+            {hello.rooms.length} rooms, each with the skeleton the model sees drawn over its camera. Falls are sent to carers' phones; this screen plays a tone too.
+          </p>
+        )}
         <Button size="lg" className="mt-8 w-full" onClick={onStart}>
-          Start monitoring
+          {hello.demo ? "Start the demo" : "Start monitoring"}
         </Button>
       </div>
     </div>
+  );
+}
+
+/** Public demo: the presenter's controls, on the wall for anyone to try. */
+function DemoBar({ phone, onPhone }: { phone: boolean; onPhone: () => void }) {
+  const hello = useStore((s) => s.hello)!;
+  const status = useStore((s) => s.status);
+  const [error, setError] = useState<string | null>(null);
+  const run = (fn: () => Promise<unknown>) => () => {
+    setError(null);
+    fn().catch((e: Error) => setError(e.message));
+  };
+  const withFall = hello.rooms.filter((r) => r.scenarios.includes("fall"));
+  const cut = hello.rooms[0];
+  const cutOff = status[cut.id]?.online === false;
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-ink-800 bg-ink-900 px-5 py-2.5 text-sm">
+      <Label>Try it</Label>
+      <span className="text-ink-400">Replay a real fall in</span>
+      <div className="flex flex-wrap gap-2">
+        {withFall.map((r) => {
+          const playing = status[r.id]?.scenario === "fall";
+          return (
+            <Button key={r.id} kind="ghost" disabled={playing} onClick={run(() => api.demo.scenario(r.id, "fall"))} className="h-8 px-3">
+              <PlayIcon /> {r.name}
+              {r.source === "recording" && <span className="text-ink-500">· our webcam</span>}
+              {playing && <span className="text-ink-500">· playing</span>}
+            </Button>
+          );
+        })}
+      </div>
+      <span className="hidden h-5 w-px bg-ink-700 md:block" />
+      <Button kind="ghost" onClick={run(() => api.demo.offline(cut.id, !cutOff))} className="h-8 px-3">
+        <PlugsIcon /> {cutOff ? `Reconnect ${cut.camera}` : `Unplug ${cut.camera}`}
+      </Button>
+      <Button kind="ghost" onClick={run(api.demo.reset)} className="h-8 px-3">
+        <ArrowCounterClockwiseIcon /> Reset
+      </Button>
+      {error && <span className="text-alarm">{error}</span>}
+      <button type="button" onClick={onPhone} className="ml-auto flex items-center gap-1.5 text-ink-300 hover:text-ink-100 2xl:hidden">
+        <DeviceMobileIcon size={16} /> {phone ? "Hide" : "Show"} the carer's phone
+      </button>
+      <span className="ml-auto hidden text-ink-500 2xl:inline">Shared demo: other visitors may be trying it too.</span>
+    </div>
+  );
+}
+
+/** The carer most rooms with a fall scenario alert first: who the demo phone signs in as. */
+function demoCarer(rooms: Room[]) {
+  const counts = new Map<string, number>();
+  for (const r of rooms) {
+    if (r.scenarios.length && r.carers[0]) counts.set(r.carers[0], (counts.get(r.carers[0]) ?? 0) + 1);
+  }
+  return [...counts].sort((a, b) => b[1] - a[1])[0]?.[0] ?? rooms[0]?.carers[0] ?? "";
+}
+
+/** The carer's phone (the real /phone page) in a phone frame: a column on wide screens, else a floating panel. */
+function DemoPhone({ floating, onClose }: { floating: boolean; onClose: () => void }) {
+  const hello = useStore((s) => s.hello)!;
+  const src = useMemo(() => `/phone?${new URLSearchParams({ as: demoCarer(hello.rooms) })}`, [hello.rooms]);
+  return (
+    <aside
+      className={
+        floating
+          ? "fixed bottom-4 right-4 z-20 flex flex-col gap-2 rounded-xl border border-ink-700 bg-ink-900 p-3 shadow-2xl"
+          : "hidden min-h-0 flex-col items-center gap-2 border-l border-ink-800 p-4 2xl:flex"
+      }
+    >
+      <div className="flex w-[320px] items-center justify-between">
+        <Label>Carer's phone</Label>
+        {floating && (
+          <button type="button" onClick={onClose} aria-label="Hide the phone" className="text-ink-400 hover:text-ink-100">
+            <XIcon size={16} />
+          </button>
+        )}
+      </div>
+      <div className="h-[min(640px,calc(100dvh-170px))] w-[320px] overflow-hidden rounded-[28px] border-4 border-ink-700 bg-ink-950 shadow-2xl">
+        <iframe src={src} title="Carer's phone" className="size-full" />
+      </div>
+    </aside>
   );
 }
 

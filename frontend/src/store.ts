@@ -6,6 +6,7 @@ import type {
   Incident,
   LogEvent,
   Posture,
+  PushMsg,
   RoomStatus,
   ScoresMsg,
   ServerMsg,
@@ -46,6 +47,8 @@ interface Store {
   alertTick: number;
   /** the server refused this device's sign-in (wrong or old token) */
   unauthorized: boolean;
+  /** public demo: the newest notification, shown by the on-page phone */
+  lastPush: PushMsg | null;
 }
 
 export const useStore = create<Store>(() => ({
@@ -59,6 +62,7 @@ export const useStore = create<Store>(() => ({
   postureSince: {},
   alertTick: 0,
   unauthorized: false,
+  lastPush: null,
 }));
 
 export const serverNow = () => Date.now() / 1000 + useStore.getState().offset;
@@ -125,6 +129,9 @@ export function handle(msg: ServerMsg) {
     case "alert":
       useStore.setState((s) => ({ alertTick: s.alertTick + 1 }));
       break;
+    case "push":
+      useStore.setState({ lastPush: msg });
+      break;
   }
 }
 
@@ -134,6 +141,10 @@ let socket: WebSocket | null = null;
 let wanted = "all";
 let delay = 500;
 let retry: ReturnType<typeof setTimeout> | undefined;
+let downSince: number | null = null;
+// a public demo gone this long has most likely been stopped for being idle: reload,
+// so the visitor gets the "wake the demo" page instead of a wall that never connects
+const DEMO_RELOAD_MS = 20000;
 
 /**
  * One live connection per page. A refusal (code 4401: not signed in) is final until
@@ -153,6 +164,7 @@ function open() {
     const msg = JSON.parse(e.data) as ServerMsg;
     if (msg.type === "hello") {
       delay = 500;
+      downSince = null;
       useStore.setState({ connected: true, unauthorized: false });
     }
     handle(msg);
@@ -165,6 +177,11 @@ function open() {
       return;
     }
     useStore.setState({ connected: false });
+    downSince ??= Date.now();
+    if (useStore.getState().hello?.demo && Date.now() - downSince > DEMO_RELOAD_MS) {
+      location.reload();
+      return;
+    }
     retry = setTimeout(open, delay);
     delay = Math.min(delay * 2, 5000);
   };

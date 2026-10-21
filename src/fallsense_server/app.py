@@ -8,6 +8,8 @@ can draw each skeleton over its own video.
 Access: this laptop (the nurse station) is trusted. Anyone else, on the hotspot or
 through the Cloudflare tunnel, signs in with the shift PIN and then sends their
 carer name and link token with every request, including reads and the WebSocket.
+With public_demo on, nobody signs in and alerts go to the simulated phone on the
+page (a "push" message) instead of ntfy, so no real phone is ever notified.
 """
 
 import asyncio
@@ -90,6 +92,8 @@ class Server:
         self.tasks: list[asyncio.Task[None]] = []
         self.tunnel: Tunnel | None = None
         self.failed_logins: defaultdict[str, deque[float]] = defaultdict(deque)
+        self.demo = bool(settings.raw.get("public_demo"))
+        self.last_viewer_at = time.monotonic()  # for /api/idle (AWS stops when idle)
 
     # ------------------------------------------------------------ room input
 
@@ -141,15 +145,35 @@ class Server:
             self.tasks.append(loop.create_task(self._send(p)))
 
     async def _send(self, push: Push) -> None:
+        if self.demo:
+            self.publish_push(push)
+            return
         results = await self.notifier.send(push)
         failed = [f"{c} ({r})" for c, r in results if r.startswith("failed")]
         if failed:
             self.service._event("push", "", f"Push failed: {', '.join(failed)}")
             self.flush()
 
+    def publish_push(self, push: Push) -> None:
+        """The notification a carer's phone would get, for the demo's on-page phone."""
+        self.hub.publish(
+            {
+                "type": "push",
+                "t": self.service.clock(),
+                "carers": push.carers,
+                "priority": push.priority,
+                "title": push.title,
+                "message": push.message,
+                "incident": push.incident_id,
+                "actions": push.actions,
+            }
+        )
+
     # ------------------------------------------------------------ background
 
     async def start(self) -> None:
+        if self.demo:  # every visitor (and every AWS wake-up) starts on a quiet shift
+            self.service.reset()
         for room in self.rooms.values():
             self.tasks.append(asyncio.create_task(room.run()))
         self.tasks.append(asyncio.create_task(asyncio.to_thread(self._prepare_videos)))
@@ -220,6 +244,8 @@ class Server:
                 elif now - self.rooms[s["room"]].last_frame_at >= offline_after:
                     self.service.on_offline(s["room"])
             self.service.tick()
+            if self.hub.clients:
+                self.last_viewer_at = time.monotonic()
             self.hub.publish(status)
             self.tasks = [t for t in self.tasks if not t.done()]
             self.flush()
@@ -243,6 +269,7 @@ class Server:
             "type": "hello",
             "schema_version": SCHEMA_VERSION,
             "site": s.raw["site"],
+            "demo": self.demo,
             "model": {
                 "run": self.run,
                 "t_high": th.get("t_high"),
@@ -260,7 +287,12 @@ class Server:
                 for r in s.rooms
             ],
             "carers": [
-                {"name": c.name, "tier": c.tier, "role": c.role, "push": bool(c.topic)}
+                {
+                    "name": c.name,
+                    "tier": c.tier,
+                    "role": c.role,
+                    "push": self.demo or bool(c.topic),
+                }
                 for c in s.carers
             ],
             "incidents": [i.to_dict() for i in recent],
@@ -285,7 +317,8 @@ class Server:
         self, conn: HTTPConnection, who: Who | None = None
     ) -> tuple[str, str] | None:
         """(name, role) of whoever is asking: a valid sign-in (body, headers or the
-        WebSocket query), else this laptop when trust_localhost is on, else None."""
+        WebSocket query), else anyone in a public demo or this laptop when
+        trust_localhost is on, else None."""
         name = (who and who.carer) or conn.headers.get("x-carer") or ""
         name = name or conn.query_params.get("carer") or ""
         token = (who and who.token) or conn.headers.get("x-token") or ""
@@ -293,7 +326,8 @@ class Server:
         role = self.role_of(name)
         if role and token and self.tokens.check(name, token):
             return name, role
-        if self.is_local(conn) and self.settings.raw.get("trust_localhost", True):
+        local = self.is_local(conn) and self.settings.raw.get("trust_localhost", True)
+        if self.demo or local:
             return (name, "carer") if role == "carer" else (STATION, "presenter")
         return None
 
@@ -321,7 +355,8 @@ class Server:
         p = self.principal(request)
         if p is None:
             raise HTTPException(401, "sign in first")
-        if p[1] != "presenter":
+        # a public demo's controls are for everyone, whoever a browser signed in as
+        if p[1] != "presenter" and not self.demo:
             raise HTTPException(403, "demo controls need the presenter PIN")
 
     @staticmethod
@@ -371,7 +406,19 @@ def create_app(
         s = srv.settings
         return {
             "site": s.raw["site"],
+            "demo": srv.demo,
             "carers": [{"name": c.name, "role": c.role} for c in s.carers],
+        }
+
+    @app.get("/api/idle")
+    async def idle(request: Request) -> dict[str, Any]:
+        """Seconds since a browser was last connected; scripts/aws/idle-stop.sh
+        stops the instance after a while of nobody watching. This machine only."""
+        if not srv.is_local(request):
+            raise HTTPException(403, "local only")
+        return {
+            "viewers": len(srv.hub.clients),
+            "idle_s": round(time.monotonic() - srv.last_viewer_at),
         }
 
     @app.get("/api/state")
@@ -483,6 +530,9 @@ def create_app(
             None,
             False,
         )
+        if srv.demo:
+            srv.publish_push(push)
+            return {"results": [(name, "demo")]}
         return {"results": await srv.notifier.send(push)}
 
     @app.get("/api/export/incidents.csv", response_class=PlainTextResponse)

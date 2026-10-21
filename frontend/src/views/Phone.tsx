@@ -1,9 +1,9 @@
-import { ArrowLeftIcon, BellIcon, BellSlashIcon, CaretRightIcon, SignOutIcon } from "@phosphor-icons/react";
+import { ArrowLeftIcon, BellIcon, BellSlashIcon, CaretRightIcon, SignOutIcon, XIcon } from "@phosphor-icons/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { adoptLinkIdentity, api, identity, setIdentity, type Identity } from "../api";
-import type { Incident } from "../contracts";
+import type { Incident, PushMsg } from "../contracts";
 import { clock, levelText, incidentReason, STATE_LABEL, unanswered, urgent } from "../format";
-import { activeIncidents, connect, subscribe, useStore } from "../store";
+import { activeIncidents, connect, reconnect, subscribe, useStore } from "../store";
 import { Button, Label, LevelMark, useNow } from "../ui/bits";
 import { IncidentView } from "../ui/IncidentView";
 import { PinPad } from "../ui/PinPad";
@@ -60,6 +60,56 @@ export function Phone({ path }: { path: string }) {
       ) : (
         <Shift me={me} onSignOut={() => signIn(null)} />
       )}
+      {me && hello?.demo && <DemoNotification carer={me.carer} />}
+    </div>
+  );
+}
+
+/**
+ * Public demo: what ntfy would show on this carer's phone, as a banner on the page.
+ * Its buttons do what the real notification's do.
+ */
+function DemoNotification({ carer }: { carer: string }) {
+  const push = useStore((s) => s.lastPush);
+  const [shown, setShown] = useState<PushMsg | null>(null);
+  useEffect(() => {
+    if (!push?.carers.includes(carer)) return;
+    setShown(push);
+    navigator.vibrate?.(push.priority >= 5 ? [200, 100, 200] : 150);
+  }, [push, carer]);
+  useEffect(() => {
+    if (!shown) return;
+    const id = setTimeout(() => setShown(null), 15000);
+    return () => clearTimeout(id);
+  }, [shown]);
+  if (!shown) return null;
+
+  const page = shown.incident ? `/phone/i/${shown.incident}` : null;
+  return (
+    <div className="fixed inset-x-3 top-3 z-30 animate-rise rounded-2xl border border-ink-700 bg-ink-800/95 p-4 shadow-2xl backdrop-blur">
+      <div className="flex items-center justify-between font-mono text-[11px] uppercase tracking-[0.08em] text-ink-400">
+        <span className="flex items-center gap-1.5">
+          <BellIcon size={12} /> ntfy · now
+        </span>
+        <button type="button" onClick={() => setShown(null)} aria-label="Dismiss" className="hover:text-ink-100">
+          <XIcon size={14} />
+        </button>
+      </div>
+      <a href={page ?? undefined} className="mt-2 block">
+        <div className={`font-medium ${shown.priority >= 5 ? "text-alarm" : "text-ink-100"}`}>{shown.title}</div>
+        <div className="mt-0.5 text-sm leading-snug text-ink-300">{shown.message}</div>
+      </a>
+      {page && shown.actions && (
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <a href={`${page}?ack=1`} className="grid h-10 place-items-center rounded-md bg-ink-100 text-sm font-medium text-ink-950">
+            I'm going
+          </a>
+          <a href={page} className="grid h-10 place-items-center rounded-md border border-ink-600 text-sm text-ink-200">
+            Open
+          </a>
+        </div>
+      )}
+      <p className="mt-3 text-[11px] text-ink-500">Demo: a real shift sends this to the carer's phone through ntfy.</p>
     </div>
   );
 }
@@ -72,16 +122,25 @@ function SignIn({ onDone }: { onDone: (id: Identity) => void }) {
   useEffect(() => {
     api.publicInfo().then(setInfo).catch(() => setError("Cannot reach the server"));
   }, []);
+  // a public demo has no PINs: the server takes the name as it is
+  const demoSignIn = (carer: string) => {
+    const id = { carer, token: "" };
+    useStore.setState({ unauthorized: false });
+    setIdentity(id);
+    onDone(id);
+    reconnect();
+  };
 
   return (
     <div className="flex flex-1 flex-col">
       <Label className="mt-6">{info?.site.ward}</Label>
       <h1 className="mt-2 text-3xl font-medium tracking-tight">Start your shift</h1>
       {error && <p className="mt-4 text-sm text-alarm">{error}</p>}
+      {info?.demo && <p className="mt-3 text-sm text-ink-400">Demo: pick a carer, no PIN needed. Each room alerts its own carers first.</p>}
       {!name ? (
         <div className="mt-8 flex flex-col divide-y divide-ink-800 border-y border-ink-800">
           {(info?.carers ?? []).map((c) => (
-            <button key={c.name} type="button" onClick={() => setName(c.name)} className="flex min-h-14 items-center justify-between text-left active:bg-ink-900">
+            <button key={c.name} type="button" onClick={() => (info?.demo ? demoSignIn(c.name) : setName(c.name))} className="flex min-h-14 items-center justify-between text-left active:bg-ink-900">
               <span>
                 <span className="block">{c.name}</span>
                 <span className="text-xs text-ink-400">{c.role}</span>
@@ -140,9 +199,11 @@ function Shift({ me, onSignOut }: { me: Identity; onSignOut: () => void }) {
         <Label>Alerts on this phone</Label>
         <div className="flex items-center gap-2 text-sm text-ink-300">
           {carer?.push ? <BellIcon /> : <BellSlashIcon />}
-          {carer?.push
-            ? "Linked to your ntfy topic"
-            : "No ntfy topic linked yet: ask the shift lead to add one"}
+          {hello.demo
+            ? "Demo: alerts show on this screen; a real shift gets them through the ntfy app"
+            : carer?.push
+              ? "Linked to your ntfy topic"
+              : "No ntfy topic linked yet: ask the shift lead to add one"}
         </div>
         <Button
           kind="ghost"
@@ -151,7 +212,14 @@ function Shift({ me, onSignOut }: { me: Identity; onSignOut: () => void }) {
             setTest("Sending");
             try {
               const r = await api.testPush(me.carer);
-              setTest(r.results[0]?.[1] === "sent" ? "Sent. Check your notifications." : "Not sent: no topic linked (dry run)");
+              const result = r.results[0]?.[1];
+              setTest(
+                result === "sent"
+                  ? "Sent. Check your notifications."
+                  : result === "demo"
+                    ? "Sent (shown above)."
+                    : "Not sent: no topic linked (dry run)",
+              );
             } catch (e) {
               setTest((e as Error).message);
             }

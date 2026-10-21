@@ -90,6 +90,8 @@ export interface Hello {
   type: "hello";
   schema_version: number;
   site: { name: string; ward: string };
+  /** public demo: no sign-in, demo controls on the wall, alerts go to the on-page phone */
+  demo: boolean;
   model: { run: string; t_high: number; t_low: number; on_floor_s: number };
   fps: number;
   bones: [number, number][];
@@ -132,11 +134,25 @@ export interface AlertMsg {
   incident: string | null;
 }
 
+/** Public demo only: the notification a carer's phone would get from ntfy. */
+export interface PushMsg {
+  type: "push";
+  t: number;
+  carers: string[];
+  priority: number;
+  title: string;
+  message: string;
+  incident: string | null;
+  /** "I'm going" / "Open" buttons */
+  actions: boolean;
+}
+
 export type ServerMsg =
   | Hello
   | FrameMsg
   | ScoresMsg
   | AlertMsg
   | StatusMsg
+  | PushMsg
   | { type: "incident"; incident: Incident }
   | ({ type: "event" } & LogEvent);

@@ -19,6 +19,10 @@ public_url: auto
 # Deployed, set false so every page, the laptop's included, signs in. Tunnel traffic
 # is recognised by its forwarding headers and always signs in either way.
 trust_localhost: true
+# true: a public demo anyone can open and play with. Nobody signs in, the demo
+# controls are on the wall, and alerts go to the simulated carer phone on the page
+# instead of ntfy: no real phone is notified, whatever topics are set.
+public_demo: false
 # one PIN per role: carers on /phone, the nurse station on the wall and log, the
 # presenter on /presenter (demo controls). Override them in server.local.yaml.
 pins:

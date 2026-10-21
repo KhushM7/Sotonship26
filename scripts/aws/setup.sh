@@ -70,7 +70,31 @@ RestartSec=5
 [Install]
 WantedBy=multi-user.target
 EOF
+# stop the instance when nobody is watching (scripts/aws/idle-stop.sh)
+sed 's/\r$//' "$ROOT/app/scripts/aws/idle-stop.sh" | sudo tee /usr/local/bin/fallsense-idle-stop >/dev/null
+sudo chmod 755 /usr/local/bin/fallsense-idle-stop
+sudo tee /etc/systemd/system/fallsense-idle.service >/dev/null <<EOF
+[Unit]
+Description=stop this instance when nobody has had fallsense open for a while
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/fallsense-idle-stop
+EOF
+sudo tee /etc/systemd/system/fallsense-idle.timer >/dev/null <<EOF
+[Unit]
+Description=check every minute whether anyone is watching fallsense
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1min
+
+[Install]
+WantedBy=timers.target
+EOF
+
 sudo systemctl daemon-reload
 sudo systemctl enable -q fallsense
+sudo systemctl enable -q --now fallsense-idle.timer
 sudo systemctl restart fallsense
 echo "== started (logs: journalctl -u fallsense -f)"

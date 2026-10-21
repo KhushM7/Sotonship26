@@ -3,7 +3,8 @@ import type { Incident } from "./contracts";
 /**
  * Who this page acts as. Each page keeps its own sign-in, so the wall (nurse
  * station), the presenter and a carer's phone can share one browser. With
- * trust_localhost on, pages on the demo laptop need no sign-in at all.
+ * trust_localhost on, pages on the demo laptop need no sign-in at all, and in a
+ * public demo no page does (a carer is then just a name, with no token).
  */
 export interface Identity {
   carer: string;
@@ -53,7 +54,9 @@ export function adoptLinkIdentity(): { ack: boolean } {
   const q = new URLSearchParams(location.search);
   const carer = q.get("carer");
   const token = q.get("token");
+  const as = q.get("as"); // the demo wall's phone: /phone?as=<carer>
   if (carer && token) setIdentity({ carer, token });
+  else if (as) setIdentity({ carer: as, token: "" });
   if (location.search) history.replaceState(null, "", location.pathname);
   return { ack: q.get("ack") === "1" };
 }
@@ -101,7 +104,11 @@ export const api = {
   /** Site and carer names for the sign-in screen; needs no sign-in. */
   publicInfo: async () => {
     const r = await fetch("/api/public");
-    return (await r.json()) as { site: { name: string; ward: string }; carers: { name: string; role: string }[] };
+    return (await r.json()) as {
+      site: { name: string; ward: string };
+      demo: boolean;
+      carers: { name: string; role: string }[];
+    };
   },
   replay: async (id: string) =>
     (await (await get(`/api/incidents/${id}/replay`)).json()) as {

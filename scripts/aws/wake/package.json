@@ -1,0 +1,11 @@
+{
+  "name": "fallsense-wake",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "aws4fetch": "1.0.20"
+  },
+  "devDependencies": {
+    "wrangler": "4.151.3"
+  }
+}

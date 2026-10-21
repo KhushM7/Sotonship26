@@ -101,6 +101,38 @@ def test_deployed_laptop_is_not_trusted(tmp_path: Path) -> None:
         assert c.post("/api/demo/reset").status_code == 401
 
 
+def test_public_demo_needs_no_sign_in_and_never_pushes(tmp_path: Path) -> None:
+    settings = load_settings(local_overrides=False)
+    settings.raw["public_demo"] = True
+    settings.raw["trust_localhost"] = False
+    for c in settings.carers:
+        c.topic = "a-real-topic"  # ignored: the demo never posts to ntfy
+    app = create_app(settings, start=False, state_dir=tmp_path)
+
+    async def no_ntfy(*_: object) -> None:
+        raise AssertionError("the demo posted to ntfy")
+
+    app.state.server.notifier.send = no_ntfy
+    with TestClient(app) as c:
+        assert c.get("/api/public", headers=TUNNEL).json()["demo"] is True
+        assert c.get("/api/state", headers=TUNNEL).json()["demo"] is True
+        assert c.post("/api/demo/reset", headers=TUNNEL).status_code == 200
+        # a browser still signed in from a real shift may use the controls too
+        r = c.post("/api/login", json={"carer": STATION, "pin": "1357"}, headers=TUNNEL)
+        station = {**TUNNEL, "x-carer": STATION, "x-token": r.json()["token"]}
+        assert c.post("/api/demo/reset", headers=station).status_code == 200
+        with c.websocket_connect("/ws?frames=none", headers=TUNNEL) as ws:
+            assert '"type":"hello"' in ws.receive_text().replace(" ", "")
+            phone = {**TUNNEL, "x-carer": CARER}  # a name, no token
+            r = c.post(f"/api/carers/{CARER}/test", json={}, headers=phone)
+            assert r.json()["results"] == [[CARER, "demo"]]
+            while '"type":"push"' not in (text := ws.receive_text()):
+                pass
+            assert CARER in text
+        assert c.get("/api/idle", headers=TUNNEL).status_code == 403
+        assert c.get("/api/idle").json()["viewers"] == 0
+
+
 def test_wrong_pins_are_limited(client: TestClient) -> None:
     for _ in range(5):
         r = client.post(

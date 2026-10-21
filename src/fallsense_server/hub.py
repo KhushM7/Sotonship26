@@ -4,8 +4,11 @@ import asyncio
 import json
 from typing import Any
 
-# Contract 6 message types; nothing else is ever sent, and none carries pixels
-MESSAGE_TYPES = {"hello", "frame", "scores", "alert", "incident", "event", "status"}
+# Contract 6 message types; nothing else is ever sent, and none carries pixels.
+# "push" is a public demo's stand-in for a phone notification (app.publish_push).
+MESSAGE_TYPES = {
+    "hello", "frame", "scores", "alert", "incident", "event", "status", "push",
+}  # fmt: skip
 
 
 class Client:

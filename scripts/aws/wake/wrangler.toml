@@ -1,0 +1,8 @@
+# Cloudflare Worker that wakes the AWS instance on a visitor's request (worker.js).
+# Deployed by .\scripts\aws.ps1 wake, which also sets INSTANCE_ID, AWS_REGION and the
+# AWS key secrets. Remove it in the Cloudflare dashboard (Workers & Pages) to undo.
+name = "fallsense-wake"
+main = "worker.js"
+compatibility_date = "2025-06-01"
+workers_dev = false
+routes = [{ pattern = "fall-safe.bid/*", zone_name = "fall-safe.bid" }]

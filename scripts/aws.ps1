@@ -7,9 +7,16 @@
 #   .\scripts\aws.ps1 deploy          # push this checkout + demo data (-Build: web app first)
 #   .\scripts\aws.ps1 up              # start the instance; the server starts with it
 #   .\scripts\aws.ps1 down            # stop it (only the disk is billed, ~$1.50/month)
+#   .\scripts\aws.ps1 wake            # once: visitors wake the stopped instance themselves
 #   .\scripts\aws.ps1 status | logs [-Follow] | ssh
 #   .\scripts\aws.ps1 preview         # the instance's wall at http://localhost:8001 (SSH)
 #   .\scripts\aws.ps1 destroy         # delete the instance, endpoint, bucket, firewall, key
+#
+# The instance stops itself once nobody has had the site open for 15 minutes (or after
+# 3 hours up; scripts/aws/idle-stop.sh). After `wake`, a Cloudflare Worker in front of
+# the site shows visitors a "Wake the demo" button while it is stopped (scripts/aws/wake;
+# run `npx wrangler login` in scripts\aws\wake first). While working on the instance:
+# .\scripts\aws.ps1 ssh, then touch /opt/fallsense/state/keep-awake (rm when done).
 #
 # Only one server may run the tunnel at a time: `down` here before .\scripts\start.ps1,
 # and stop start.ps1 before `up`/`deploy` (both refuse while port 8000 is in use).
@@ -19,7 +26,7 @@
 # AWS_PROFILE overrides) and Windows OpenSSH.
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("create", "deploy", "up", "down", "status", "logs", "ssh", "preview", "destroy")]
+    [ValidateSet("create", "deploy", "up", "down", "wake", "status", "logs", "ssh", "preview", "destroy")]
     [string]$Command = "status",
     [switch]$Build,
     [switch]$Follow,
@@ -249,6 +256,47 @@ function Publish {
     Wait-Server $inst.Id
 }
 
+function Publish-Wake {
+    # an IAM user that may start this one instance (and read its state), nothing else;
+    # its key lives only in the Worker's secrets
+    $inst = Get-Instance
+    if (-not $inst) { throw "No $Name instance: run .\scripts\aws.ps1 create" }
+    $account = Invoke-Aws sts get-caller-identity --query Account --output text
+    $user = "$Name-wake"
+    Invoke-Quiet aws iam get-user --user-name $user
+    if ($LASTEXITCODE) { Invoke-Aws iam create-user --user-name $user | Out-Null }
+    $policy = @{
+        Version   = "2012-10-17"
+        Statement = @(
+            @{ Effect = "Allow"; Action = "ec2:StartInstances"
+               Resource = "arn:aws:ec2:${Region}:${account}:instance/$($inst.Id)" },
+            @{ Effect = "Allow"; Action = "ec2:DescribeInstances"; Resource = "*" }
+        )
+    } | ConvertTo-Json -Depth 5 -Compress
+    $policyFile = Join-Path $env:TEMP "fallsense-wake-policy.json"
+    [IO.File]::WriteAllText($policyFile, $policy)
+    Invoke-Aws iam put-user-policy --user-name $user --policy-name start-$Name `
+        --policy-document "file://$policyFile" | Out-Null
+    # a fresh key each run; the old ones are deleted
+    $old = Invoke-Aws iam list-access-keys --user-name $user --query "AccessKeyMetadata[].AccessKeyId" --output text
+    foreach ($k in ($old -split "\s+" | Where-Object { $_ })) {
+        Invoke-Aws iam delete-access-key --user-name $user --access-key-id $k | Out-Null
+    }
+    $keyId, $secret = (Invoke-Aws iam create-access-key --user-name $user `
+        --query "AccessKey.[AccessKeyId,SecretAccessKey]" --output text) -split "\s+"
+
+    Push-Location "$root\scripts\aws\wake"
+    try {
+        npm install --no-fund --no-audit
+        npx wrangler deploy --var "INSTANCE_ID:$($inst.Id)" --var "AWS_REGION:$Region"
+        if ($LASTEXITCODE) { throw "wrangler deploy failed (signed in? npx wrangler login)" }
+        $keyId | npx wrangler secret put AWS_ACCESS_KEY_ID
+        $secret | npx wrangler secret put AWS_SECRET_ACCESS_KEY
+        if ($LASTEXITCODE) { throw "wrangler secret put failed" }
+    } finally { Pop-Location }
+    Write-Host "Done: while the instance is stopped, https://fall-safe.bid offers 'Wake the demo'."
+}
+
 switch ($Command) {
     "create" { New-Instance; Publish }
     "deploy" { Publish }
@@ -271,6 +319,7 @@ switch ($Command) {
         Invoke-Aws ec2 wait instance-stopped --instance-ids $inst.Id
         Write-Host "Stopped."
     }
+    "wake" { Publish-Wake }
     "status" {
         $inst = Get-Instance
         if (-not $inst) { Write-Host "No $Name instance."; break }

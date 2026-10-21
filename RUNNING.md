@@ -51,7 +51,47 @@ web traffic through the Cloudflare tunnel.
 tunnel is ready. They refuse to run while something on the laptop listens on port 8000 or
 the Cloudflared service is running.
 
-Running costs about $0.03/hour. Run `down` when you are not using it.
+Running costs about $0.03/hour. You don't need to run `down`: the instance stops itself
+once nobody has had the site open for 15 minutes, or after 3 hours up in any case
+(`scripts/aws/idle-stop.sh`, a systemd timer installed by `deploy`). While stopped, only
+the disk is billed (~$1.50/month).
+
+### Wake on visit (`.\scripts\aws.ps1 wake`, once)
+
+A Cloudflare Worker (`scripts/aws/wake/worker.js`) sits in front of https://fall-safe.bid.
+While the site is up it passes every request through. While the instance is stopped it
+shows a "The demo is asleep" page with a **Wake the demo** button. The button starts the
+instance and the page reloads into the demo when it is ready, about a minute later.
+Visitors can only wake it by pressing the button, so crawlers never start it.
+
+```powershell
+cd scripts\aws\wake; npm install; npx wrangler login; cd ..\..\..   # once: sign Wrangler in to Cloudflare
+.\scripts\aws.ps1 wake      # IAM user fallsense-wake (may only start this instance), then deploy the Worker
+```
+
+Run `wake` again after `destroy` + `create`, because the instance ID changes. Each run
+replaces the Worker's AWS key. To undo it, delete the `fallsense-wake` Worker in the
+Cloudflare dashboard and the `fallsense-wake` IAM user.
+
+To keep the instance up while you work on it: `.\scripts\aws.ps1 ssh`, then
+`touch /opt/fallsense/state/keep-awake` (`rm` it when done).
+
+### Public demo mode (`public_demo: true`)
+
+With `public_demo: true` in `configs/server.local.yaml`, the site is a self-serve demo:
+
+- nobody signs in (no PINs);
+- the wall gets a **Try it** bar to replay the fall scenarios, unplug a camera and reset;
+  `/presenter` still works;
+- the carer's phone (the real `/phone` page) sits next to the wall. It is a column on
+  wide screens and behind **Show the carer's phone** otherwise;
+- alerts are shown on that phone as an ntfy-style banner. **ntfy is never called**, so no
+  real phone is notified, whatever topics are set;
+- every start (each wake-up) begins on a quiet shift.
+
+All visitors share one demo, so one visitor's Reset clears everyone's incidents. Set
+`public_demo: false` (the default in `server.yaml`) for a real shift with PINs and phone
+pushes.
 
 ### Trying the instance while the laptop serves the site
 

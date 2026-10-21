@@ -42,7 +42,9 @@ def main() -> int:
                 how = "downloaded"
             except OSError as e:
                 print(f"  download failed: {e}")
-        out = web_video(ref.dataset, ref.path) if src else None
+        if src is None:
+            how = "cached"  # the source is gone, but its browser copy is kept
+        out = web_video(ref.dataset, ref.path)
         missing += out is None
         print(f"{ref.dataset}/{ref.path}: {how if out else 'NO VIDEO (skeleton only)'}")
     print(f"{len(refs) - missing} of {len(refs)} clips have video")
