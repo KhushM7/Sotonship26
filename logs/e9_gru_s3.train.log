@@ -1,0 +1,19 @@
+train 53429 windows, val 12454 windows (12454 from the train sets, used for selection)
+train classes: [17795 15917  3991 15726]
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+epoch  1  loss 0.8993  val AP(falling) 0.7481  macro F1 0.6762  (all val 0.7481 / 0.6762)  false/h 69.3 at sens 0.806 (t 0.55)  115.8s  *
+115.8 s for epoch 1 (incl. worker start-up), ETA up to 77.2 min
+epoch  2  loss 0.7669  val AP(falling) 0.7633  macro F1 0.7129  (all val 0.7633 / 0.7129)  false/h 66.6 at sens 0.806 (t 0.5)  47.4s  *
+epoch  3  loss 0.7326  val AP(falling) 0.7833  macro F1 0.7148  (all val 0.7833 / 0.7148)  false/h 62.6 at sens 0.812 (t 0.5)  48.1s  *
+epoch  4  loss 0.7065  val AP(falling) 0.7847  macro F1 0.7246  (all val 0.7847 / 0.7246)  false/h 60.0 at sens 0.833 (t 0.55)  38.1s  *
+epoch  5  loss 0.6839  val AP(falling) 0.7901  macro F1 0.7227  (all val 0.7901 / 0.7227)  false/h 44.0 at sens 0.806 (t 0.65)  39.2s  *
+epoch  6  loss 0.6645  val AP(falling) 0.8065  macro F1 0.7217  (all val 0.8065 / 0.7217)  false/h 61.3 at sens 0.806 (t 0.65)  40.1s
+epoch  7  loss 0.6460  val AP(falling) 0.8030  macro F1 0.7387  (all val 0.8030 / 0.7387)  false/h 71.9 at sens 0.806 (t 0.55)  32.7s
+epoch  8  loss 0.6288  val AP(falling) 0.7985  macro F1 0.7228  (all val 0.7985 / 0.7228)  false/h 74.6 at sens 0.806 (t 0.55)  44.1s
+epoch  9  loss 0.6141  val AP(falling) 0.8035  macro F1 0.7333  (all val 0.8035 / 0.7333)  false/h 81.3 at sens 0.812 (t 0.5)  56.4s
+epoch 10  loss 0.6010  val AP(falling) 0.8018  macro F1 0.7269  (all val 0.8018 / 0.7269)  false/h 81.3 at sens 0.806 (t 0.55)  37.1s
+epoch 11  loss 0.5891  val AP(falling) 0.7920  macro F1 0.7313  (all val 0.7920 / 0.7313)  false/h 67.9 at sens 0.806 (t 0.55)  35.6s
+epoch 12  loss 0.5794  val AP(falling) 0.8062  macro F1 0.7291  (all val 0.8062 / 0.7291)  false/h 77.3 at sens 0.826 (t 0.55)  36.5s
+epoch 13  loss 0.5696  val AP(falling) 0.7871  macro F1 0.7232  (all val 0.7871 / 0.7232)  false/h 70.6 at sens 0.812 (t 0.65)  30.2s
+early stop: 8 epochs without improvement
+best val AP(falling) 0.7901, false FALL/h 44.0 at sens >= 80% -> models\e9_gru_s3

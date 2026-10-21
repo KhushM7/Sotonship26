@@ -1,0 +1,23 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+tuning on 380 train clips, 313 falls
+   a   h    f1  precision  recall  false_alarms_per_h
+-0.2 0.9 0.688      0.788   0.610              37.534
+ 0.0 0.9 0.677      0.837   0.569              25.426
+-0.2 0.7 0.670      0.815   0.569              29.664
+ 0.0 0.7 0.668      0.852   0.550              21.794
+ 0.2 0.9 0.657      0.864   0.530              19.372
+ 0.2 0.7 0.634      0.870   0.498              17.556
+ 0.4 0.9 0.610      0.881   0.466              14.529
+ 0.4 0.7 0.594      0.885   0.447              13.318
+-0.2 0.5 0.588      0.815   0.460              24.215
+ 0.0 0.5 0.575      0.839   0.438              19.372
+ 0.2 0.5 0.553      0.854   0.409              16.345
+ 0.4 0.5 0.527      0.873   0.377              12.713
+-0.2 0.3 0.501      0.817   0.361              18.767
+ 0.0 0.3 0.488      0.831   0.345              16.345
+ 0.2 0.3 0.461      0.849   0.316              13.318
+ 0.4 0.3 0.439      0.864   0.294              10.897
+chosen a=-0.2, h=0.9 (train event F1 0.688)
+val: 12524 score rows for 589 clips
+test: 15105 score rows for 635 clips
+oops: 40038 score rows for 818 clips

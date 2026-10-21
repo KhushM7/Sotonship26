@@ -1,0 +1,10 @@
+# E8/E9 (2026-10-18): new recipe; E9 adds 1.5x controlled_low weight
+e9_gru_s1|--model gru --train-sets GMDCSA24 caucafall le2i mcfd occu of-syn --augment --lr 1e-3 --weight-decay 1e-2 --select event --select-target 0.80 --low-weight 1.5 --seed 1
+e8_gru_s1|--model gru --train-sets GMDCSA24 caucafall le2i mcfd occu of-syn --augment --lr 1e-3 --weight-decay 1e-2 --select event --select-target 0.80 --seed 1
+e9_tcn_s1|--model tcn --train-sets GMDCSA24 caucafall le2i mcfd occu of-syn --augment --lr 1e-3 --weight-decay 1e-2 --select event --select-target 0.80 --low-weight 1.5 --seed 1
+e9_gru_s2|--model gru --train-sets GMDCSA24 caucafall le2i mcfd occu of-syn --augment --lr 1e-3 --weight-decay 1e-2 --select event --select-target 0.80 --low-weight 1.5 --seed 2
+e8_gru_s2|--model gru --train-sets GMDCSA24 caucafall le2i mcfd occu of-syn --augment --lr 1e-3 --weight-decay 1e-2 --select event --select-target 0.80 --seed 2
+e9_tcn_s2|--model tcn --train-sets GMDCSA24 caucafall le2i mcfd occu of-syn --augment --lr 1e-3 --weight-decay 1e-2 --select event --select-target 0.80 --low-weight 1.5 --seed 2
+e9_gru_s3|--model gru --train-sets GMDCSA24 caucafall le2i mcfd occu of-syn --augment --lr 1e-3 --weight-decay 1e-2 --select event --select-target 0.80 --low-weight 1.5 --seed 3
+e8_gru_s3|--model gru --train-sets GMDCSA24 caucafall le2i mcfd occu of-syn --augment --lr 1e-3 --weight-decay 1e-2 --select event --select-target 0.80 --seed 3
+e9_tcn_s3|--model tcn --train-sets GMDCSA24 caucafall le2i mcfd occu of-syn --augment --lr 1e-3 --weight-decay 1e-2 --select event --select-target 0.80 --low-weight 1.5 --seed 3

@@ -1,0 +1,55 @@
+2026-10-17T23:11:36 start e4_gru_s3 pid 54224 threads 2 workers 3 (calib/eval only)
+2026-10-17T23:11:36 start e4_tcn_s1 pid 84800 threads 2 workers 3 (calib/eval only)
+2026-10-17T23:11:36 start e5_gru_s1 pid 32640 threads 2 workers 3
+2026-10-17T23:12:21 done e4_tcn_s1
+2026-10-17T23:12:21 done e4_gru_s3
+2026-10-17T23:12:36 start e5_tcn_s1 pid 88032 threads 2 workers 3
+2026-10-17T23:13:36 start e5_gru_s2 pid 53848 threads 2 workers 3
+2026-10-17T23:14:36 start e5_tcn_s2 pid 87652 threads 2 workers 3
+2026-10-17T23:15:37 start e5_gru_s3 pid 51172 threads 1 workers 4
+2026-10-17T23:16:37 done e5_gru_s1
+2026-10-17T23:16:37 start e5_tcn_s3 pid 93176 threads 2 workers 3
+2026-10-17T23:18:07 done e5_tcn_s1
+2026-10-17T23:20:53 done e5_gru_s2
+2026-10-17T23:21:53 done e5_tcn_s2
+2026-10-17T23:21:53 done e5_gru_s3
+2026-10-17T23:24:23 done e5_tcn_s3
+2026-10-17T23:24:23 queue empty, exiting
+2026-10-17T23:33:02 start e7_gru_s1 pid 3120 threads 3 workers 4
+2026-10-17T23:34:02 start e7_gru_s2 pid 89296 threads 3 workers 4
+2026-10-17T23:35:02 start e7_gru_s3 pid 46364 threads 3 workers 4
+2026-10-17T23:41:33 done e7_gru_s1
+2026-10-17T23:42:03 done e7_gru_s3
+2026-10-17T23:43:18 done e7_gru_s2
+2026-10-17T23:43:18 queue empty, exiting
+2026-10-17T23:56:20 start e6_gru_s1 pid 6536 threads 3 workers 4
+2026-10-17T23:57:21 start e6_gru_s2 pid 67296 threads 3 workers 4
+2026-10-17T23:58:21 start e6_gru_s3 pid 29788 threads 3 workers 4
+2026-10-18T00:00:51 done e6_gru_s1
+2026-10-18T00:02:36 done e6_gru_s2
+2026-10-18T00:03:21 done e6_gru_s3
+2026-10-18T00:03:21 queue empty, exiting
+2026-10-18T00:05:21 start e4_tcn_s2 pid 37092 threads 3 workers 4
+2026-10-18T00:06:21 start e4_tcn_s3 pid 65704 threads 3 workers 4
+2026-10-18T00:07:21 done e4_tcn_s2
+2026-10-18T00:09:06 done e4_tcn_s3
+2026-10-18T00:09:06 queue empty, exiting
+2026-10-18T01:57:41 start e9_gru_s1 pid 27568 threads 1 workers 4
+2026-10-18T01:58:41 start e8_gru_s1 pid 73268 threads 1 workers 4
+2026-10-18T01:59:42 start e9_tcn_s1 pid 17476 threads 1 workers 4
+2026-10-18T02:00:42 start e9_gru_s2 pid 77004 threads 1 workers 4
+2026-10-18T02:01:42 start e8_gru_s2 pid 68236 threads 1 workers 4
+2026-10-18T02:02:42 start e9_tcn_s2 pid 49592 threads 1 workers 4
+2026-10-18T02:09:14 start e9_gru_s3 pid 81852 threads 1 workers 4
+2026-10-18T02:11:00 done e8_gru_s1
+2026-10-18T02:14:16 done e9_gru_s2
+2026-10-18T02:14:46 start e8_gru_s3 pid 67732 threads 1 workers 4
+2026-10-18T02:15:46 start e9_tcn_s3 pid 69440 threads 1 workers 4
+2026-10-18T02:16:16 done e9_tcn_s1
+2026-10-18T02:16:31 done e9_gru_s1
+2026-10-18T02:18:32 done e8_gru_s2
+2026-10-18T02:21:33 done e9_tcn_s2
+2026-10-18T02:22:48 done e9_gru_s3
+2026-10-18T02:25:18 done e8_gru_s3
+2026-10-18T02:28:34 done e9_tcn_s3
+2026-10-18T02:28:34 queue empty, exiting

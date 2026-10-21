@@ -1,0 +1,21 @@
+temperature: 1.01
+t_high: 0.65
+t_low: 0.3
+on_floor_seconds_eval: 5
+on_floor_seconds_demo: 20
+calibration:
+  split: val
+  target_fall: 0.8
+  target_any: 0.88
+  plateau: 0.03
+  ece_before: 0.0412
+  ece_after: 0.0422
+  sens_fall: 0.8056
+  sens_any: 0.8819
+  false_fall_per_h: 47.96
+  false_fall_per_h_ci:
+  - 34.39
+  - 63.6
+  checks_per_h: 121.88
+  normal_hours: 0.751
+  notes: []

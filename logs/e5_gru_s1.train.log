@@ -1,0 +1,16 @@
+train 53429 windows, val 12454 windows (12454 from the train sets, used for selection)
+train classes: [17795 15917  3991 15726]
+epoch  1  loss 0.8653  val AP(falling) 0.7493  macro F1 0.6995  (all val 0.7493 / 0.6995)  23.6s  *
+23.6 s for epoch 1 (incl. worker start-up), ETA up to 15.8 min
+epoch  2  loss 0.7493  val AP(falling) 0.7771  macro F1 0.7041  (all val 0.7771 / 0.7041)  14.2s  *
+epoch  3  loss 0.7064  val AP(falling) 0.8067  macro F1 0.7371  (all val 0.8067 / 0.7371)  14.2s  *
+epoch  4  loss 0.6712  val AP(falling) 0.7860  macro F1 0.7163  (all val 0.7860 / 0.7163)  14.1s
+epoch  5  loss 0.6476  val AP(falling) 0.7939  macro F1 0.7177  (all val 0.7939 / 0.7177)  16.2s
+epoch  6  loss 0.6222  val AP(falling) 0.7872  macro F1 0.7319  (all val 0.7872 / 0.7319)  15.9s
+epoch  7  loss 0.6050  val AP(falling) 0.7946  macro F1 0.7467  (all val 0.7946 / 0.7467)  15.8s
+epoch  8  loss 0.5850  val AP(falling) 0.7931  macro F1 0.7265  (all val 0.7931 / 0.7265)  15.7s
+epoch  9  loss 0.5683  val AP(falling) 0.7725  macro F1 0.7361  (all val 0.7725 / 0.7361)  16.7s
+epoch 10  loss 0.5520  val AP(falling) 0.7809  macro F1 0.7424  (all val 0.7809 / 0.7424)  22.0s
+epoch 11  loss 0.5380  val AP(falling) 0.7762  macro F1 0.7359  (all val 0.7762 / 0.7359)  20.2s
+early stop: 8 epochs without improvement
+best val AP(falling) 0.8067, macro F1 0.7371 -> models\e5_gru_s1

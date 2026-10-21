@@ -1,0 +1,5 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+e4_gru_s2 (one threshold)          sens FALL 80.6% (72.7%ÔÇô88.6%)    any 80.6% (72.7%ÔÇô88.6%)    false/h 169.20 (145.14ÔÇô196.04)
+e4_gru_s2 (CHECK band)             sens FALL 80.6% (72.7%ÔÇô88.6%)    any 89.6% (83.1%ÔÇô96.7%)    false/h 169.20 (145.14ÔÇô196.04)
+rule baseline (E0)                 sens FALL 68.8% (56.7%ÔÇô80.6%)    any 68.8% (56.7%ÔÇô80.6%)    false/h 167.86 (142.60ÔÇô195.93)
+wrote C:\Users\khush\OneDrive\Coding\Hackathons\Southampton-Sotonship26\Sotonship26\reports\eval\eval_e4_gru_s2_val.md / .json

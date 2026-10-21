@@ -1,0 +1,24 @@
+train 53429 windows, val 12454 windows (12454 from the train sets, used for selection)
+train classes: [17795 15917  3991 15726]
+epoch  1  loss 0.8568  val AP(falling) 0.7740  macro F1 0.7115  (all val 0.7740 / 0.7115)  43.4s  *
+43.4 s for epoch 1 (incl. worker start-up), ETA up to 29.0 min
+epoch  2  loss 0.7676  val AP(falling) 0.7853  macro F1 0.7049  (all val 0.7853 / 0.7049)  25.9s  *
+epoch  3  loss 0.7350  val AP(falling) 0.7952  macro F1 0.7466  (all val 0.7952 / 0.7466)  25.8s  *
+epoch  4  loss 0.7111  val AP(falling) 0.7951  macro F1 0.7388  (all val 0.7951 / 0.7388)  27.0s
+epoch  5  loss 0.6901  val AP(falling) 0.8047  macro F1 0.7361  (all val 0.8047 / 0.7361)  25.4s  *
+epoch  6  loss 0.6743  val AP(falling) 0.8087  macro F1 0.7439  (all val 0.8087 / 0.7439)  19.9s  *
+epoch  7  loss 0.6614  val AP(falling) 0.8055  macro F1 0.7460  (all val 0.8055 / 0.7460)  20.2s
+epoch  8  loss 0.6496  val AP(falling) 0.8092  macro F1 0.7454  (all val 0.8092 / 0.7454)  18.1s  *
+epoch  9  loss 0.6373  val AP(falling) 0.8089  macro F1 0.7494  (all val 0.8089 / 0.7494)  14.2s
+epoch 10  loss 0.6273  val AP(falling) 0.7924  macro F1 0.7468  (all val 0.7924 / 0.7468)  14.3s
+epoch 11  loss 0.6163  val AP(falling) 0.8124  macro F1 0.7591  (all val 0.8124 / 0.7591)  13.9s  *
+epoch 12  loss 0.6080  val AP(falling) 0.7813  macro F1 0.7434  (all val 0.7813 / 0.7434)  13.7s
+epoch 13  loss 0.5997  val AP(falling) 0.7893  macro F1 0.7485  (all val 0.7893 / 0.7485)  13.8s
+epoch 14  loss 0.5928  val AP(falling) 0.7868  macro F1 0.7492  (all val 0.7868 / 0.7492)  13.5s
+epoch 15  loss 0.5836  val AP(falling) 0.7810  macro F1 0.7452  (all val 0.7810 / 0.7452)  13.4s
+epoch 16  loss 0.5773  val AP(falling) 0.7767  macro F1 0.7571  (all val 0.7767 / 0.7571)  13.3s
+epoch 17  loss 0.5697  val AP(falling) 0.7766  macro F1 0.7494  (all val 0.7766 / 0.7494)  13.4s
+epoch 18  loss 0.5634  val AP(falling) 0.7821  macro F1 0.7472  (all val 0.7821 / 0.7472)  13.4s
+epoch 19  loss 0.5555  val AP(falling) 0.7798  macro F1 0.7484  (all val 0.7798 / 0.7484)  13.3s
+early stop: 8 epochs without improvement
+best val AP(falling) 0.8124, macro F1 0.7591 -> models\e5_tcn_s3

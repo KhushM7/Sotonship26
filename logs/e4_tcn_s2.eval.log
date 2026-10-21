@@ -1,0 +1,5 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+e4_tcn_s2 (one threshold)          sens FALL 73.6% (65.3%–82.1%)    any 73.6% (65.3%–82.1%)    false/h 194.51 (169.08–219.73)
+e4_tcn_s2 (CHECK band)             sens FALL 73.6% (65.3%–82.1%)    any 84.7% (76.0%–93.1%)    false/h 194.51 (169.08–219.73)
+rule baseline (E0)                 sens FALL 68.8% (56.7%–80.6%)    any 68.8% (56.7%–80.6%)    false/h 167.86 (142.60–195.93)
+wrote C:\Users\khush\OneDrive\Coding\Hackathons\Southampton-Sotonship26\Sotonship26\reports\eval\eval_e4_tcn_s2_val.md / .json

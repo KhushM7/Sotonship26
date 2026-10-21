@@ -1,0 +1,5 @@
+temperature 1.071; ECE 0.0561 -> 0.0513
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+t_high 0.45, t_low 0.20  (no threshold reaches FALL sensitivity 90%; highest threshold within 3% of the best (89.6%); no t_low reaches FALL-or-CHECK sensitivity 95%)
+val: FALL sensitivity 87.5% (79.8-95.0), FALL or CHECK 91.0% (83.1-98.4), false FALL/h 81.3 (65.3-102.2), CHECK/h 99.9
+wrote C:\Users\khush\OneDrive\Coding\Hackathons\Southampton-Sotonship26\Sotonship26\models\e6_gru_s3\thresholds.yaml

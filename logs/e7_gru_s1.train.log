@@ -1,0 +1,30 @@
+train 53429 windows, val 12454 windows (12454 from the train sets, used for selection)
+train classes: [17795 15917  3991 15726]
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+C:\Users\khush\OneDrive\Coding\Hackathons\Southampton-Sotonship26\Sotonship26\src\fallsense\occlusion.py:270: RuntimeWarning: Mean of empty slice
+  hip_y = np.nanmean(kp_out[:, list(HIPS), 1], axis=1)
+C:\Users\khush\OneDrive\Coding\Hackathons\Southampton-Sotonship26\Sotonship26\src\fallsense\occlusion.py:270: RuntimeWarning: Mean of empty slice
+  hip_y = np.nanmean(kp_out[:, list(HIPS), 1], axis=1)
+C:\Users\khush\OneDrive\Coding\Hackathons\Southampton-Sotonship26\Sotonship26\src\fallsense\occlusion.py:270: RuntimeWarning: Mean of empty slice
+  hip_y = np.nanmean(kp_out[:, list(HIPS), 1], axis=1)
+C:\Users\khush\OneDrive\Coding\Hackathons\Southampton-Sotonship26\Sotonship26\src\fallsense\occlusion.py:270: RuntimeWarning: Mean of empty slice
+  hip_y = np.nanmean(kp_out[:, list(HIPS), 1], axis=1)
+epoch  1  loss 0.9025  val AP(falling) 0.7461  macro F1 0.7004  (all val 0.7461 / 0.7004)  28.3s  *
+28.3 s for epoch 1 (incl. worker start-up), ETA up to 18.8 min
+epoch  2  loss 0.7950  val AP(falling) 0.7769  macro F1 0.6932  (all val 0.7769 / 0.6932)  15.4s  *
+epoch  3  loss 0.7592  val AP(falling) 0.7974  macro F1 0.7288  (all val 0.7974 / 0.7288)  15.3s  *
+epoch  4  loss 0.7257  val AP(falling) 0.7975  macro F1 0.7215  (all val 0.7975 / 0.7215)  16.6s  *
+epoch  5  loss 0.7062  val AP(falling) 0.8053  macro F1 0.7129  (all val 0.8053 / 0.7129)  18.0s  *
+epoch  6  loss 0.6834  val AP(falling) 0.8074  macro F1 0.7430  (all val 0.8074 / 0.7430)  20.3s  *
+epoch  7  loss 0.6677  val AP(falling) 0.8160  macro F1 0.7235  (all val 0.8160 / 0.7235)  19.4s  *
+epoch  8  loss 0.6493  val AP(falling) 0.8189  macro F1 0.7322  (all val 0.8189 / 0.7322)  20.2s  *
+epoch  9  loss 0.6395  val AP(falling) 0.8164  macro F1 0.7171  (all val 0.8164 / 0.7171)  27.8s
+epoch 10  loss 0.6273  val AP(falling) 0.8037  macro F1 0.7301  (all val 0.8037 / 0.7301)  30.2s
+epoch 11  loss 0.6111  val AP(falling) 0.7874  macro F1 0.7236  (all val 0.7874 / 0.7236)  30.2s
+epoch 12  loss 0.6051  val AP(falling) 0.7954  macro F1 0.7274  (all val 0.7954 / 0.7274)  32.5s
+epoch 13  loss 0.5938  val AP(falling) 0.7900  macro F1 0.7197  (all val 0.7900 / 0.7197)  32.4s
+epoch 14  loss 0.5813  val AP(falling) 0.7893  macro F1 0.7191  (all val 0.7893 / 0.7191)  31.7s
+epoch 15  loss 0.5722  val AP(falling) 0.7960  macro F1 0.7471  (all val 0.7960 / 0.7471)  32.4s
+epoch 16  loss 0.5656  val AP(falling) 0.7988  macro F1 0.7331  (all val 0.7988 / 0.7331)  32.0s
+early stop: 8 epochs without improvement
+best val AP(falling) 0.8189, macro F1 0.7322 -> models\e7_gru_s1

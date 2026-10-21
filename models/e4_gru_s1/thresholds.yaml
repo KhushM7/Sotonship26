@@ -1,0 +1,24 @@
+temperature: 1.3726
+t_high: 0.25
+t_low: 0.1
+on_floor_seconds_eval: 5
+on_floor_seconds_demo: 20
+calibration:
+  split: val
+  target_fall: 0.9
+  target_any: 0.95
+  plateau: 0.03
+  ece_before: 0.1098
+  ece_after: 0.0379
+  sens_fall: 0.7847
+  sens_any: 0.8681
+  false_fall_per_h: 215.82
+  false_fall_per_h_ci:
+  - 188.63
+  - 244.15
+  checks_per_h: 243.77
+  normal_hours: 0.751
+  notes:
+  - no threshold reaches FALL sensitivity 90%; highest threshold within 3% of the
+    best (81.2%)
+  - no t_low reaches FALL-or-CHECK sensitivity 95%

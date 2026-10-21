@@ -2,6 +2,7 @@ data/
 *.mp4
 *.avi
 *.npz
+!models/**/feat_stats.npz
 .venv/
 models/pose/*.task
 __pycache__/
@@ -20,3 +21,5 @@ configs/server.local.yaml
 frontend/node_modules/
 frontend/dist/
 frontend/*.tsbuildinfo
+scripts/aws/wake/node_modules/
+scripts/aws/wake/.wrangler/

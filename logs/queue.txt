@@ -1,0 +1,2 @@
+e4_tcn_s2|--model tcn --train-sets GMDCSA24 caucafall le2i mcfd occu --augment --seed 2
+e4_tcn_s3|--model tcn --train-sets GMDCSA24 caucafall le2i mcfd occu --augment --seed 3

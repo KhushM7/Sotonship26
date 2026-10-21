@@ -1,0 +1,520 @@
+== e1_gru_s1: PASS
+  PASS  models/e1_gru_s1/model.pt exists
+  PASS  models/e1_gru_s1/feat_stats.npz exists
+  PASS  models/e1_gru_s1/confusion.png exists
+  PASS  models/e1_gru_s1/calibration.csv exists
+  PASS  config.yaml git_commit '23288a1-dirty' clean
+  PASS  config.yaml laptop 'AnanthHN_Laptop'
+  PASS  train_log.csv has val_all_* columns
+  PASS  val_logits.npy rows 12454 == 12454
+  PASS  thresholds.yaml has calibration block
+  PASS  val.parquet rows 12454 == 12454
+  PASS  val.parquet passes validate_scores
+  PASS  val.parquet newer than val_logits.npy
+  PASS  eval_e1_gru_s1_val.md newer than thresholds.yaml (Dev B run: same thresholds by content)
+  PASS  eval_e1_gru_s1_val.json newer than thresholds.yaml (Dev B run: same thresholds by content)
+  PASS  eval_e1_gru_s1_val_coverage.png newer than thresholds.yaml (Dev B run: same thresholds by content)
+
+== e1_gru_s2: PASS
+  PASS  models/e1_gru_s2/model.pt exists
+  PASS  models/e1_gru_s2/feat_stats.npz exists
+  PASS  models/e1_gru_s2/confusion.png exists
+  PASS  models/e1_gru_s2/calibration.csv exists
+  PASS  config.yaml git_commit '23288a1-dirty' clean
+  PASS  config.yaml laptop 'AnanthHN_Laptop'
+  PASS  train_log.csv has val_all_* columns
+  PASS  val_logits.npy rows 12454 == 12454
+  PASS  thresholds.yaml has calibration block
+  PASS  val.parquet rows 12454 == 12454
+  PASS  val.parquet passes validate_scores
+  PASS  val.parquet newer than val_logits.npy
+  PASS  eval_e1_gru_s2_val.md newer than thresholds.yaml (Dev B run: same thresholds by content)
+  PASS  eval_e1_gru_s2_val.json newer than thresholds.yaml (Dev B run: same thresholds by content)
+  PASS  eval_e1_gru_s2_val_coverage.png newer than thresholds.yaml (Dev B run: same thresholds by content)
+
+== e1_gru_s3: PASS
+  PASS  models/e1_gru_s3/model.pt exists
+  PASS  models/e1_gru_s3/feat_stats.npz exists
+  PASS  models/e1_gru_s3/confusion.png exists
+  PASS  models/e1_gru_s3/calibration.csv exists
+  PASS  config.yaml git_commit '23288a1-dirty' clean
+  PASS  config.yaml laptop 'AnanthHN_Laptop'
+  PASS  train_log.csv has val_all_* columns
+  PASS  val_logits.npy rows 12454 == 12454
+  PASS  thresholds.yaml has calibration block
+  PASS  val.parquet rows 12454 == 12454
+  PASS  val.parquet passes validate_scores
+  PASS  val.parquet newer than val_logits.npy
+  PASS  eval_e1_gru_s3_val.md newer than thresholds.yaml (Dev B run: same thresholds by content)
+  PASS  eval_e1_gru_s3_val.json newer than thresholds.yaml (Dev B run: same thresholds by content)
+  PASS  eval_e1_gru_s3_val_coverage.png newer than thresholds.yaml (Dev B run: same thresholds by content)
+
+== e2_gru_s1: PASS
+  PASS  models/e2_gru_s1/model.pt exists
+  PASS  models/e2_gru_s1/feat_stats.npz exists
+  PASS  models/e2_gru_s1/confusion.png exists
+  PASS  models/e2_gru_s1/calibration.csv exists
+  PASS  config.yaml git_commit '23288a1-dirty' clean
+  PASS  config.yaml laptop 'AnanthHN_Laptop'
+  PASS  train_log.csv has val_all_* columns
+  PASS  val_logits.npy rows 12454 == 12454
+  PASS  thresholds.yaml has calibration block
+  PASS  val.parquet rows 12454 == 12454
+  PASS  val.parquet passes validate_scores
+  PASS  val.parquet newer than val_logits.npy
+  PASS  eval_e2_gru_s1_val.md newer than thresholds.yaml (Dev B run: same thresholds by content)
+  PASS  eval_e2_gru_s1_val.json newer than thresholds.yaml (Dev B run: same thresholds by content)
+  PASS  eval_e2_gru_s1_val_coverage.png newer than thresholds.yaml (Dev B run: same thresholds by content)
+
+== e2_gru_s2: PASS
+  PASS  models/e2_gru_s2/model.pt exists
+  PASS  models/e2_gru_s2/feat_stats.npz exists
+  PASS  models/e2_gru_s2/confusion.png exists
+  PASS  models/e2_gru_s2/calibration.csv exists
+  PASS  config.yaml git_commit '23288a1-dirty' clean
+  PASS  config.yaml laptop 'AnanthHN_Laptop'
+  PASS  train_log.csv has val_all_* columns
+  PASS  val_logits.npy rows 12454 == 12454
+  PASS  thresholds.yaml has calibration block
+  PASS  val.parquet rows 12454 == 12454
+  PASS  val.parquet passes validate_scores
+  PASS  val.parquet newer than val_logits.npy
+  PASS  eval_e2_gru_s2_val.md newer than thresholds.yaml (Dev B run: same thresholds by content)
+  PASS  eval_e2_gru_s2_val.json newer than thresholds.yaml (Dev B run: same thresholds by content)
+  PASS  eval_e2_gru_s2_val_coverage.png newer than thresholds.yaml (Dev B run: same thresholds by content)
+
+== e2_gru_s3: PASS
+  PASS  models/e2_gru_s3/model.pt exists
+  PASS  models/e2_gru_s3/feat_stats.npz exists
+  PASS  models/e2_gru_s3/confusion.png exists
+  PASS  models/e2_gru_s3/calibration.csv exists
+  PASS  config.yaml git_commit '23288a1-dirty' clean
+  PASS  config.yaml laptop 'AnanthHN_Laptop'
+  PASS  train_log.csv has val_all_* columns
+  PASS  val_logits.npy rows 12454 == 12454
+  PASS  thresholds.yaml has calibration block
+  PASS  val.parquet rows 12454 == 12454
+  PASS  val.parquet passes validate_scores
+  PASS  val.parquet newer than val_logits.npy
+  PASS  eval_e2_gru_s3_val.md newer than thresholds.yaml (Dev B run: same thresholds by content)
+  PASS  eval_e2_gru_s3_val.json newer than thresholds.yaml (Dev B run: same thresholds by content)
+  PASS  eval_e2_gru_s3_val_coverage.png newer than thresholds.yaml (Dev B run: same thresholds by content)
+
+== e3_tcn_s1: PASS
+  PASS  models/e3_tcn_s1/model.pt exists
+  PASS  models/e3_tcn_s1/feat_stats.npz exists
+  PASS  models/e3_tcn_s1/confusion.png exists
+  PASS  models/e3_tcn_s1/calibration.csv exists
+  PASS  config.yaml git_commit '23288a1-dirty' clean
+  PASS  config.yaml laptop 'AnanthHN_Laptop'
+  PASS  train_log.csv has val_all_* columns
+  PASS  val_logits.npy rows 12454 == 12454
+  PASS  thresholds.yaml has calibration block
+  PASS  val.parquet rows 12454 == 12454
+  PASS  val.parquet passes validate_scores
+  PASS  val.parquet newer than val_logits.npy
+  PASS  eval_e3_tcn_s1_val.md newer than thresholds.yaml (Dev B run: same thresholds by content)
+  PASS  eval_e3_tcn_s1_val.json newer than thresholds.yaml (Dev B run: same thresholds by content)
+  PASS  eval_e3_tcn_s1_val_coverage.png newer than thresholds.yaml (Dev B run: same thresholds by content)
+
+== e3_tcn_s2: PASS
+  PASS  models/e3_tcn_s2/model.pt exists
+  PASS  models/e3_tcn_s2/feat_stats.npz exists
+  PASS  models/e3_tcn_s2/confusion.png exists
+  PASS  models/e3_tcn_s2/calibration.csv exists
+  PASS  config.yaml git_commit '23288a1-dirty' clean
+  PASS  config.yaml laptop 'AnanthHN_Laptop'
+  PASS  train_log.csv has val_all_* columns
+  PASS  val_logits.npy rows 12454 == 12454
+  PASS  thresholds.yaml has calibration block
+  PASS  val.parquet rows 12454 == 12454
+  PASS  val.parquet passes validate_scores
+  PASS  val.parquet newer than val_logits.npy
+  PASS  eval_e3_tcn_s2_val.md newer than thresholds.yaml (Dev B run: same thresholds by content)
+  PASS  eval_e3_tcn_s2_val.json newer than thresholds.yaml (Dev B run: same thresholds by content)
+  PASS  eval_e3_tcn_s2_val_coverage.png newer than thresholds.yaml (Dev B run: same thresholds by content)
+
+== e3_tcn_s3: PASS
+  PASS  models/e3_tcn_s3/model.pt exists
+  PASS  models/e3_tcn_s3/feat_stats.npz exists
+  PASS  models/e3_tcn_s3/confusion.png exists
+  PASS  models/e3_tcn_s3/calibration.csv exists
+  PASS  config.yaml git_commit '23288a1-dirty' clean
+  PASS  config.yaml laptop 'AnanthHN_Laptop'
+  PASS  train_log.csv has val_all_* columns
+  PASS  val_logits.npy rows 12454 == 12454
+  PASS  thresholds.yaml has calibration block
+  PASS  val.parquet rows 12454 == 12454
+  PASS  val.parquet passes validate_scores
+  PASS  val.parquet newer than val_logits.npy
+  PASS  eval_e3_tcn_s3_val.md newer than thresholds.yaml (Dev B run: same thresholds by content)
+  PASS  eval_e3_tcn_s3_val.json newer than thresholds.yaml (Dev B run: same thresholds by content)
+  PASS  eval_e3_tcn_s3_val_coverage.png newer than thresholds.yaml (Dev B run: same thresholds by content)
+
+== e4_gru_s1: PASS
+  PASS  models/e4_gru_s1/model.pt exists
+  PASS  models/e4_gru_s1/feat_stats.npz exists
+  PASS  models/e4_gru_s1/confusion.png exists
+  PASS  models/e4_gru_s1/calibration.csv exists
+  PASS  config.yaml git_commit '23288a1-dirty' clean
+  PASS  config.yaml laptop 'AnanthHN_Laptop'
+  PASS  train_log.csv has val_all_* columns
+  PASS  val_logits.npy rows 12454 == 12454
+  PASS  thresholds.yaml has calibration block
+  PASS  val.parquet rows 12454 == 12454
+  PASS  val.parquet passes validate_scores
+  PASS  val.parquet newer than val_logits.npy
+  PASS  eval_e4_gru_s1_val.md newer than thresholds.yaml
+  PASS  eval_e4_gru_s1_val.json newer than thresholds.yaml
+  PASS  eval_e4_gru_s1_val_coverage.png newer than thresholds.yaml
+
+== e4_gru_s2: PASS
+  PASS  models/e4_gru_s2/model.pt exists
+  PASS  models/e4_gru_s2/feat_stats.npz exists
+  PASS  models/e4_gru_s2/confusion.png exists
+  PASS  models/e4_gru_s2/calibration.csv exists
+  PASS  config.yaml git_commit '23288a1-dirty' clean
+  PASS  config.yaml laptop 'AnanthHN_Laptop'
+  PASS  train_log.csv has val_all_* columns
+  PASS  val_logits.npy rows 12454 == 12454
+  PASS  thresholds.yaml has calibration block
+  PASS  val.parquet rows 12454 == 12454
+  PASS  val.parquet passes validate_scores
+  PASS  val.parquet newer than val_logits.npy
+  PASS  eval_e4_gru_s2_val.md newer than thresholds.yaml
+  PASS  eval_e4_gru_s2_val.json newer than thresholds.yaml
+  PASS  eval_e4_gru_s2_val_coverage.png newer than thresholds.yaml
+
+== e4_gru_s3: PASS
+  PASS  models/e4_gru_s3/model.pt exists
+  PASS  models/e4_gru_s3/feat_stats.npz exists
+  PASS  models/e4_gru_s3/confusion.png exists
+  PASS  models/e4_gru_s3/calibration.csv exists
+  PASS  config.yaml git_commit '23288a1-dirty' clean
+  PASS  config.yaml laptop 'AnanthHN_Laptop'
+  PASS  train_log.csv has val_all_* columns
+  PASS  val_logits.npy rows 12454 == 12454
+  PASS  thresholds.yaml has calibration block
+  PASS  val.parquet rows 12454 == 12454
+  PASS  val.parquet passes validate_scores
+  PASS  val.parquet newer than val_logits.npy
+  PASS  eval_e4_gru_s3_val.md newer than thresholds.yaml
+  PASS  eval_e4_gru_s3_val.json newer than thresholds.yaml
+  PASS  eval_e4_gru_s3_val_coverage.png newer than thresholds.yaml
+  [calib] temperature 1.186; ECE 0.0505 -> 0.0226
+  [calib] val: FALL sensitivity 75.7% (67.3-84.3), FALL or CHECK 91.0% (83.3-97.7), false FALL/h 174.5 (151.5-199.6), CHECK/h 375.6
+  [eval] e4_gru_s3 (one threshold)          sens FALL 77.1% (69.9%–84.8%)    any 77.1% (69.9%–84.8%)    false/h 174.52 (151.53–199.65)
+  [eval] e4_gru_s3 (CHECK band)             sens FALL 77.1% (69.9%–84.8%)    any 91.7% (85.3%–97.7%)    false/h 174.52 (151.53–199.65)
+== e4_tcn_s1: PASS
+  PASS  models/e4_tcn_s1/model.pt exists
+  PASS  models/e4_tcn_s1/feat_stats.npz exists
+  PASS  models/e4_tcn_s1/confusion.png exists
+  PASS  models/e4_tcn_s1/calibration.csv exists
+  PASS  config.yaml git_commit '23288a1-dirty' clean
+  PASS  config.yaml laptop 'AnanthHN_Laptop'
+  PASS  train_log.csv has val_all_* columns
+  PASS  val_logits.npy rows 12454 == 12454
+  PASS  thresholds.yaml has calibration block
+  PASS  val.parquet rows 12454 == 12454
+  PASS  val.parquet passes validate_scores
+  PASS  val.parquet newer than val_logits.npy
+  PASS  eval_e4_tcn_s1_val.md newer than thresholds.yaml
+  PASS  eval_e4_tcn_s1_val.json newer than thresholds.yaml
+  PASS  eval_e4_tcn_s1_val_coverage.png newer than thresholds.yaml
+  [calib] temperature 1.291; ECE 0.0606 -> 0.0247
+  [calib] val: FALL sensitivity 75.0% (67.3-82.6), FALL or CHECK 81.9% (74.7-89.3), false FALL/h 287.8 (259.7-317.9), CHECK/h 295.7
+  [eval] e4_tcn_s1 (one threshold)          sens FALL 75.0% (67.3%–82.6%)    any 75.0% (67.3%–82.6%)    false/h 287.77 (259.74–317.91)
+  [eval] e4_tcn_s1 (CHECK band)             sens FALL 75.0% (67.3%–82.6%)    any 81.9% (74.7%–89.3%)    false/h 287.77 (259.74–317.91)
+== e4_tcn_s2: PASS
+  PASS  models/e4_tcn_s2/model.pt exists
+  PASS  models/e4_tcn_s2/feat_stats.npz exists
+  PASS  models/e4_tcn_s2/confusion.png exists
+  PASS  models/e4_tcn_s2/calibration.csv exists
+  PASS  config.yaml git_commit '760f123' clean
+  PASS  config.yaml laptop 'Khush_Mehta'
+  PASS  train_log.csv has val_all_* columns
+  PASS  val_logits.npy rows 12454 == 12454
+  PASS  thresholds.yaml has calibration block
+  PASS  val.parquet rows 12454 == 12454
+  PASS  val.parquet passes validate_scores
+  PASS  val.parquet newer than val_logits.npy
+  PASS  eval_e4_tcn_s2_val.md newer than thresholds.yaml
+  PASS  eval_e4_tcn_s2_val.json newer than thresholds.yaml
+  PASS  eval_e4_tcn_s2_val_coverage.png newer than thresholds.yaml
+  [train] best val AP(falling) 0.8636, macro F1 0.7656 -> models\e4_tcn_s2
+  [calib] temperature 1.128; ECE 0.0446 -> 0.0258
+  [calib] val: FALL sensitivity 73.6% (65.3-82.1), FALL or CHECK 84.7% (76.0-93.1), false FALL/h 194.5 (169.1-219.7), CHECK/h 363.7
+  [eval] e4_tcn_s2 (one threshold)          sens FALL 73.6% (65.3%–82.1%)    any 73.6% (65.3%–82.1%)    false/h 194.51 (169.08–219.73)
+  [eval] e4_tcn_s2 (CHECK band)             sens FALL 73.6% (65.3%–82.1%)    any 84.7% (76.0%–93.1%)    false/h 194.51 (169.08–219.73)
+== e4_tcn_s3: PASS
+  PASS  models/e4_tcn_s3/model.pt exists
+  PASS  models/e4_tcn_s3/feat_stats.npz exists
+  PASS  models/e4_tcn_s3/confusion.png exists
+  PASS  models/e4_tcn_s3/calibration.csv exists
+  PASS  config.yaml git_commit '760f123' clean
+  PASS  config.yaml laptop 'Khush_Mehta'
+  PASS  train_log.csv has val_all_* columns
+  PASS  val_logits.npy rows 12454 == 12454
+  PASS  thresholds.yaml has calibration block
+  PASS  val.parquet rows 12454 == 12454
+  PASS  val.parquet passes validate_scores
+  PASS  val.parquet newer than val_logits.npy
+  PASS  eval_e4_tcn_s3_val.md newer than thresholds.yaml
+  PASS  eval_e4_tcn_s3_val.json newer than thresholds.yaml
+  PASS  eval_e4_tcn_s3_val_coverage.png newer than thresholds.yaml
+  [train] best val AP(falling) 0.8774, macro F1 0.7805 -> models\e4_tcn_s3
+  [calib] temperature 1.351; ECE 0.0765 -> 0.0322
+  [calib] val: FALL sensitivity 77.1% (69.9-85.3), FALL or CHECK 80.6% (72.8-88.5), false FALL/h 263.8 (235.0-292.7), CHECK/h 157.8
+  [eval] e4_tcn_s3 (one threshold)          sens FALL 77.1% (69.9%–85.3%)    any 77.1% (69.9%–85.3%)    false/h 263.79 (235.03–292.71)
+  [eval] e4_tcn_s3 (CHECK band)             sens FALL 77.1% (69.9%–85.3%)    any 80.6% (72.8%–88.5%)    false/h 263.79 (235.03–292.71)
+== e5_gru_s1: PASS
+  PASS  models/e5_gru_s1/model.pt exists
+  PASS  models/e5_gru_s1/feat_stats.npz exists
+  PASS  models/e5_gru_s1/confusion.png exists
+  PASS  models/e5_gru_s1/calibration.csv exists
+  PASS  config.yaml git_commit '760f123' clean
+  PASS  config.yaml laptop 'Khush_Mehta'
+  PASS  train_log.csv has val_all_* columns
+  PASS  val_logits.npy rows 12454 == 12454
+  PASS  thresholds.yaml has calibration block
+  PASS  val.parquet rows 12454 == 12454
+  PASS  val.parquet passes validate_scores
+  PASS  val.parquet newer than val_logits.npy
+  PASS  eval_e5_gru_s1_val.md newer than thresholds.yaml
+  PASS  eval_e5_gru_s1_val.json newer than thresholds.yaml
+  PASS  eval_e5_gru_s1_val_coverage.png newer than thresholds.yaml
+  [train] best val AP(falling) 0.8067, macro F1 0.7371 -> models\e5_gru_s1
+  [calib] temperature 0.971; ECE 0.0208 -> 0.0206
+  [calib] val: FALL sensitivity 89.6% (81.3-97.8), FALL or CHECK 89.6% (81.3-97.8), false FALL/h 113.2 (91.9-136.8), CHECK/h 0.0
+  [eval] e5_gru_s1 (one threshold)          sens FALL 89.6% (81.3%–97.8%)    any 89.6% (81.3%–97.8%)    false/h 113.24 (91.92–136.80)
+== e5_gru_s2: PASS
+  PASS  models/e5_gru_s2/model.pt exists
+  PASS  models/e5_gru_s2/feat_stats.npz exists
+  PASS  models/e5_gru_s2/confusion.png exists
+  PASS  models/e5_gru_s2/calibration.csv exists
+  PASS  config.yaml git_commit '760f123' clean
+  PASS  config.yaml laptop 'Khush_Mehta'
+  PASS  train_log.csv has val_all_* columns
+  PASS  val_logits.npy rows 12454 == 12454
+  PASS  thresholds.yaml has calibration block
+  PASS  val.parquet rows 12454 == 12454
+  PASS  val.parquet passes validate_scores
+  PASS  val.parquet newer than val_logits.npy
+  PASS  eval_e5_gru_s2_val.md newer than thresholds.yaml
+  PASS  eval_e5_gru_s2_val.json newer than thresholds.yaml
+  PASS  eval_e5_gru_s2_val_coverage.png newer than thresholds.yaml
+  [train] best val AP(falling) 0.8137, macro F1 0.7169 -> models\e5_gru_s2
+  [calib] temperature 1.031; ECE 0.0417 -> 0.0390
+  [calib] val: FALL sensitivity 84.0% (75.9-92.5), FALL or CHECK 89.6% (81.2-97.7), false FALL/h 97.3 (79.5-119.0), CHECK/h 124.9
+  [eval] e5_gru_s2 (one threshold)          sens FALL 84.0% (75.9%–92.5%)    any 84.0% (75.9%–92.5%)    false/h 97.25 (79.48–118.95)
+  [eval] e5_gru_s2 (CHECK band)             sens FALL 84.0% (75.9%–92.5%)    any 89.6% (81.2%–97.7%)    false/h 97.25 (79.48–118.95)
+== e5_gru_s3: PASS
+  PASS  models/e5_gru_s3/model.pt exists
+  PASS  models/e5_gru_s3/feat_stats.npz exists
+  PASS  models/e5_gru_s3/confusion.png exists
+  PASS  models/e5_gru_s3/calibration.csv exists
+  PASS  config.yaml git_commit '760f123' clean
+  PASS  config.yaml laptop 'Khush_Mehta'
+  PASS  train_log.csv has val_all_* columns
+  PASS  val_logits.npy rows 12454 == 12454
+  PASS  thresholds.yaml has calibration block
+  PASS  val.parquet rows 12454 == 12454
+  PASS  val.parquet passes validate_scores
+  PASS  val.parquet newer than val_logits.npy
+  PASS  eval_e5_gru_s3_val.md newer than thresholds.yaml
+  PASS  eval_e5_gru_s3_val.json newer than thresholds.yaml
+  PASS  eval_e5_gru_s3_val_coverage.png newer than thresholds.yaml
+  [train] best val AP(falling) 0.8068, macro F1 0.7342 -> models\e5_gru_s3
+  [calib] temperature 1.090; ECE 0.0490 -> 0.0332
+  [calib] val: FALL sensitivity 84.0% (76.4-92.6), FALL or CHECK 88.9% (81.0-97.4), false FALL/h 89.3 (72.0-109.4), CHECK/h 83.9
+  [eval] e5_gru_s3 (one threshold)          sens FALL 84.0% (76.4%–92.6%)    any 84.0% (76.4%–92.6%)    false/h 89.26 (72.05–109.36)
+  [eval] e5_gru_s3 (CHECK band)             sens FALL 84.0% (76.4%–92.6%)    any 88.9% (81.0%–97.4%)    false/h 89.26 (72.05–109.36)
+== e5_tcn_s1: PASS
+  PASS  models/e5_tcn_s1/model.pt exists
+  PASS  models/e5_tcn_s1/feat_stats.npz exists
+  PASS  models/e5_tcn_s1/confusion.png exists
+  PASS  models/e5_tcn_s1/calibration.csv exists
+  PASS  config.yaml git_commit '760f123' clean
+  PASS  config.yaml laptop 'Khush_Mehta'
+  PASS  train_log.csv has val_all_* columns
+  PASS  val_logits.npy rows 12454 == 12454
+  PASS  thresholds.yaml has calibration block
+  PASS  val.parquet rows 12454 == 12454
+  PASS  val.parquet passes validate_scores
+  PASS  val.parquet newer than val_logits.npy
+  PASS  eval_e5_tcn_s1_val.md newer than thresholds.yaml
+  PASS  eval_e5_tcn_s1_val.json newer than thresholds.yaml
+  PASS  eval_e5_tcn_s1_val_coverage.png newer than thresholds.yaml
+  [train] best val AP(falling) 0.8129, macro F1 0.7502 -> models\e5_tcn_s1
+  [calib] temperature 0.916; ECE 0.0230 -> 0.0162
+  [calib] val: FALL sensitivity 83.3% (75.2-92.1), FALL or CHECK 89.6% (81.4-97.9), false FALL/h 71.9 (54.4-88.6), CHECK/h 150.9
+  [eval] e5_tcn_s1 (one threshold)          sens FALL 83.3% (75.2%–92.1%)    any 83.3% (75.2%–92.1%)    false/h 71.94 (54.45–88.57)
+  [eval] e5_tcn_s1 (CHECK band)             sens FALL 83.3% (75.2%–92.1%)    any 89.6% (81.4%–97.9%)    false/h 71.94 (54.45–88.57)
+== e5_tcn_s2: PASS
+  PASS  models/e5_tcn_s2/model.pt exists
+  PASS  models/e5_tcn_s2/feat_stats.npz exists
+  PASS  models/e5_tcn_s2/confusion.png exists
+  PASS  models/e5_tcn_s2/calibration.csv exists
+  PASS  config.yaml git_commit '760f123' clean
+  PASS  config.yaml laptop 'Khush_Mehta'
+  PASS  train_log.csv has val_all_* columns
+  PASS  val_logits.npy rows 12454 == 12454
+  PASS  thresholds.yaml has calibration block
+  PASS  val.parquet rows 12454 == 12454
+  PASS  val.parquet passes validate_scores
+  PASS  val.parquet newer than val_logits.npy
+  PASS  eval_e5_tcn_s2_val.md newer than thresholds.yaml
+  PASS  eval_e5_tcn_s2_val.json newer than thresholds.yaml
+  PASS  eval_e5_tcn_s2_val_coverage.png newer than thresholds.yaml
+  [train] best val AP(falling) 0.8131, macro F1 0.7422 -> models\e5_tcn_s2
+  [calib] temperature 0.989; ECE 0.0166 -> 0.0165
+  [calib] val: FALL sensitivity 84.7% (76.5-93.4), FALL or CHECK 89.6% (80.8-97.6), false FALL/h 91.9 (73.9-110.6), CHECK/h 141.9
+  [eval] e5_tcn_s2 (one threshold)          sens FALL 84.7% (76.5%–93.4%)    any 84.7% (76.5%–93.4%)    false/h 91.93 (73.90–110.56)
+  [eval] e5_tcn_s2 (CHECK band)             sens FALL 84.7% (76.5%–93.4%)    any 89.6% (80.8%–97.6%)    false/h 91.93 (73.90–110.56)
+== e5_tcn_s3: PASS
+  PASS  models/e5_tcn_s3/model.pt exists
+  PASS  models/e5_tcn_s3/feat_stats.npz exists
+  PASS  models/e5_tcn_s3/confusion.png exists
+  PASS  models/e5_tcn_s3/calibration.csv exists
+  PASS  config.yaml git_commit '760f123' clean
+  PASS  config.yaml laptop 'Khush_Mehta'
+  PASS  train_log.csv has val_all_* columns
+  PASS  val_logits.npy rows 12454 == 12454
+  PASS  thresholds.yaml has calibration block
+  PASS  val.parquet rows 12454 == 12454
+  PASS  val.parquet passes validate_scores
+  PASS  val.parquet newer than val_logits.npy
+  PASS  eval_e5_tcn_s3_val.md newer than thresholds.yaml
+  PASS  eval_e5_tcn_s3_val.json newer than thresholds.yaml
+  PASS  eval_e5_tcn_s3_val_coverage.png newer than thresholds.yaml
+  [train] best val AP(falling) 0.8124, macro F1 0.7591 -> models\e5_tcn_s3
+  [calib] temperature 1.049; ECE 0.0178 -> 0.0129
+  [calib] val: FALL sensitivity 85.4% (77.1-94.7), FALL or CHECK 90.3% (82.0-98.4), false FALL/h 81.3 (64.1-100.7), CHECK/h 116.9
+  [eval] e5_tcn_s3 (one threshold)          sens FALL 85.4% (77.1%–94.7%)    any 85.4% (77.1%–94.7%)    false/h 81.27 (64.12–100.73)
+  [eval] e5_tcn_s3 (CHECK band)             sens FALL 85.4% (77.1%–94.7%)    any 90.3% (82.0%–98.4%)    false/h 81.27 (64.12–100.73)
+== e6_gru_s1: PASS
+  PASS  models/e6_gru_s1/model.pt exists
+  PASS  models/e6_gru_s1/feat_stats.npz exists
+  PASS  models/e6_gru_s1/confusion.png exists
+  PASS  models/e6_gru_s1/calibration.csv exists
+  PASS  config.yaml git_commit '760f123' clean
+  PASS  config.yaml laptop 'Khush_Mehta'
+  PASS  train_log.csv has val_all_* columns
+  PASS  val_logits.npy rows 12454 == 12454
+  PASS  thresholds.yaml has calibration block
+  PASS  val.parquet rows 12454 == 12454
+  PASS  val.parquet passes validate_scores
+  PASS  val.parquet newer than val_logits.npy
+  PASS  eval_e6_gru_s1_val.md newer than thresholds.yaml
+  PASS  eval_e6_gru_s1_val.json newer than thresholds.yaml
+  PASS  eval_e6_gru_s1_val_coverage.png newer than thresholds.yaml
+  [train] best val AP(falling) 0.8183, macro F1 0.7120 -> models\e6_gru_s1
+  [calib] temperature 1.013; ECE 0.0415 -> 0.0398
+  [calib] val: FALL sensitivity 84.0% (75.1-92.4), FALL or CHECK 88.2% (81.1-95.2), false FALL/h 83.9 (66.5-103.0), CHECK/h 141.9
+  [eval] e6_gru_s1 (one threshold)          sens FALL 84.0% (75.1%–92.4%)    any 84.0% (75.1%–92.4%)    false/h 83.93 (66.49–103.01)
+  [eval] e6_gru_s1 (CHECK band)             sens FALL 84.0% (75.1%–92.4%)    any 88.2% (81.1%–95.2%)    false/h 83.93 (66.49–103.01)
+== e6_gru_s2: PASS
+  PASS  models/e6_gru_s2/model.pt exists
+  PASS  models/e6_gru_s2/feat_stats.npz exists
+  PASS  models/e6_gru_s2/confusion.png exists
+  PASS  models/e6_gru_s2/calibration.csv exists
+  PASS  config.yaml git_commit '760f123' clean
+  PASS  config.yaml laptop 'Khush_Mehta'
+  PASS  train_log.csv has val_all_* columns
+  PASS  val_logits.npy rows 12454 == 12454
+  PASS  thresholds.yaml has calibration block
+  PASS  val.parquet rows 12454 == 12454
+  PASS  val.parquet passes validate_scores
+  PASS  val.parquet newer than val_logits.npy
+  PASS  eval_e6_gru_s2_val.md newer than thresholds.yaml
+  PASS  eval_e6_gru_s2_val.json newer than thresholds.yaml
+  PASS  eval_e6_gru_s2_val_coverage.png newer than thresholds.yaml
+  [train] best val AP(falling) 0.8061, macro F1 0.7178 -> models\e6_gru_s2
+  [calib] temperature 1.082; ECE 0.0481 -> 0.0435
+  [calib] val: FALL sensitivity 81.9% (74.1-90.3), FALL or CHECK 89.6% (81.3-97.9), false FALL/h 53.3 (38.9-70.2), CHECK/h 144.9
+  [eval] e6_gru_s2 (one threshold)          sens FALL 81.9% (74.1%–90.3%)    any 81.9% (74.1%–90.3%)    false/h 53.29 (38.94–70.17)
+  [eval] e6_gru_s2 (CHECK band)             sens FALL 81.9% (74.1%–90.3%)    any 89.6% (81.3%–97.9%)    false/h 53.29 (38.94–70.17)
+== e6_gru_s3: PASS
+  PASS  models/e6_gru_s3/model.pt exists
+  PASS  models/e6_gru_s3/feat_stats.npz exists
+  PASS  models/e6_gru_s3/confusion.png exists
+  PASS  models/e6_gru_s3/calibration.csv exists
+  PASS  config.yaml git_commit '760f123' clean
+  PASS  config.yaml laptop 'Khush_Mehta'
+  PASS  train_log.csv has val_all_* columns
+  PASS  val_logits.npy rows 12454 == 12454
+  PASS  thresholds.yaml has calibration block
+  PASS  val.parquet rows 12454 == 12454
+  PASS  val.parquet passes validate_scores
+  PASS  val.parquet newer than val_logits.npy
+  PASS  eval_e6_gru_s3_val.md newer than thresholds.yaml
+  PASS  eval_e6_gru_s3_val.json newer than thresholds.yaml
+  PASS  eval_e6_gru_s3_val_coverage.png newer than thresholds.yaml
+  [train] best val AP(falling) 0.8158, macro F1 0.7292 -> models\e6_gru_s3
+  [calib] temperature 1.071; ECE 0.0561 -> 0.0513
+  [calib] val: FALL sensitivity 87.5% (79.8-95.0), FALL or CHECK 91.0% (83.1-98.4), false FALL/h 81.3 (65.3-102.2), CHECK/h 99.9
+  [eval] e6_gru_s3 (one threshold)          sens FALL 87.5% (79.8%–95.0%)    any 87.5% (79.8%–95.0%)    false/h 81.27 (65.26–102.23)
+  [eval] e6_gru_s3 (CHECK band)             sens FALL 87.5% (79.8%–95.0%)    any 91.0% (83.1%–98.4%)    false/h 81.27 (65.26–102.23)
+== e7_gru_s1: PASS
+  PASS  models/e7_gru_s1/model.pt exists
+  PASS  models/e7_gru_s1/feat_stats.npz exists
+  PASS  models/e7_gru_s1/confusion.png exists
+  PASS  models/e7_gru_s1/calibration.csv exists
+  PASS  config.yaml git_commit '760f123' clean
+  PASS  config.yaml laptop 'Khush_Mehta'
+  PASS  train_log.csv has val_all_* columns
+  PASS  val_logits.npy rows 12454 == 12454
+  PASS  thresholds.yaml has calibration block
+  PASS  val.parquet rows 12454 == 12454
+  PASS  val.parquet passes validate_scores
+  PASS  val.parquet newer than val_logits.npy
+  PASS  eval_e7_gru_s1_val.md newer than thresholds.yaml
+  PASS  eval_e7_gru_s1_val.json newer than thresholds.yaml
+  PASS  eval_e7_gru_s1_val_coverage.png newer than thresholds.yaml
+  [train] best val AP(falling) 0.8189, macro F1 0.7322 -> models\e7_gru_s1
+  [calib] temperature 1.054; ECE 0.0439 -> 0.0375
+  [calib] val: FALL sensitivity 84.0% (75.9-92.6), FALL or CHECK 89.6% (81.8-97.7), false FALL/h 69.3 (52.4-87.8), CHECK/h 111.9
+  [eval] e7_gru_s1 (one threshold)          sens FALL 84.0% (75.9%–92.6%)    any 84.0% (75.9%–92.6%)    false/h 69.28 (52.42–87.80)
+  [eval] e7_gru_s1 (CHECK band)             sens FALL 84.0% (75.9%–92.6%)    any 89.6% (81.8%–97.7%)    false/h 69.28 (52.42–87.80)
+== e7_gru_s2: PASS
+  PASS  models/e7_gru_s2/model.pt exists
+  PASS  models/e7_gru_s2/feat_stats.npz exists
+  PASS  models/e7_gru_s2/confusion.png exists
+  PASS  models/e7_gru_s2/calibration.csv exists
+  PASS  config.yaml git_commit '760f123' clean
+  PASS  config.yaml laptop 'Khush_Mehta'
+  PASS  train_log.csv has val_all_* columns
+  PASS  val_logits.npy rows 12454 == 12454
+  PASS  thresholds.yaml has calibration block
+  PASS  val.parquet rows 12454 == 12454
+  PASS  val.parquet passes validate_scores
+  PASS  val.parquet newer than val_logits.npy
+  PASS  eval_e7_gru_s2_val.md newer than thresholds.yaml
+  PASS  eval_e7_gru_s2_val.json newer than thresholds.yaml
+  PASS  eval_e7_gru_s2_val_coverage.png newer than thresholds.yaml
+  [train] best val AP(falling) 0.8118, macro F1 0.7210 -> models\e7_gru_s2
+  [calib] temperature 1.016; ECE 0.0459 -> 0.0467
+  [calib] val: FALL sensitivity 81.9% (74.8-89.6), FALL or CHECK 88.9% (82.4-95.7), false FALL/h 82.6 (66.1-103.5), CHECK/h 105.9
+  [eval] e7_gru_s2 (one threshold)          sens FALL 81.9% (74.8%–89.6%)    any 81.9% (74.8%–89.6%)    false/h 82.60 (66.05–103.50)
+  [eval] e7_gru_s2 (CHECK band)             sens FALL 81.9% (74.8%–89.6%)    any 88.9% (82.4%–95.7%)    false/h 82.60 (66.05–103.50)
+== e7_gru_s3: PASS
+  PASS  models/e7_gru_s3/model.pt exists
+  PASS  models/e7_gru_s3/feat_stats.npz exists
+  PASS  models/e7_gru_s3/confusion.png exists
+  PASS  models/e7_gru_s3/calibration.csv exists
+  PASS  config.yaml git_commit '760f123' clean
+  PASS  config.yaml laptop 'Khush_Mehta'
+  PASS  train_log.csv has val_all_* columns
+  PASS  val_logits.npy rows 12454 == 12454
+  PASS  thresholds.yaml has calibration block
+  PASS  val.parquet rows 12454 == 12454
+  PASS  val.parquet passes validate_scores
+  PASS  val.parquet newer than val_logits.npy
+  PASS  eval_e7_gru_s3_val.md newer than thresholds.yaml
+  PASS  eval_e7_gru_s3_val.json newer than thresholds.yaml
+  PASS  eval_e7_gru_s3_val_coverage.png newer than thresholds.yaml
+  [train] best val AP(falling) 0.8061, macro F1 0.7263 -> models\e7_gru_s3
+  [calib] temperature 1.036; ECE 0.0499 -> 0.0481
+  [calib] val: FALL sensitivity 87.5% (79.1-95.7), FALL or CHECK 89.6% (81.0-97.5), false FALL/h 83.9 (68.0-103.0), CHECK/h 28.0
+  [eval] e7_gru_s3 (one threshold)          sens FALL 87.5% (79.1%–95.7%)    any 87.5% (79.1%–95.7%)    false/h 83.93 (67.98–102.97)
+  [eval] e7_gru_s3 (CHECK band)             sens FALL 87.5% (79.1%–95.7%)    any 89.6% (81.0%–97.5%)    false/h 83.93 (67.98–102.97)

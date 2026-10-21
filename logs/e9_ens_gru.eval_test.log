@@ -1,0 +1,5 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+e9_ens_gru (one threshold)         sens FALL 82.5% (74.7%–89.3%)    any 82.5% (74.7%–89.3%)    false/h 35.65 (24.89–48.19)
+e9_ens_gru (CHECK band)            sens FALL 82.5% (74.7%–89.3%)    any 87.0% (79.4%–93.7%)    false/h 35.65 (24.89–48.19)
+rule baseline (E0)                 sens FALL 59.1% (48.0%–69.4%)    any 59.1% (48.0%–69.4%)    false/h 173.77 (147.13–200.24)
+wrote C:\Users\khush\OneDrive\Coding\Hackathons\Southampton-Sotonship26\Sotonship26\reports\eval\eval_e9_ens_gru_test.md / .json

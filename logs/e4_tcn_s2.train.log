@@ -1,0 +1,15 @@
+train 21331 windows, val 12454 windows (4194 from the train sets, used for selection)
+train classes: [8378 7088 2014 3851]
+epoch  1  loss 0.8484  val AP(falling) 0.8529  macro F1 0.7439  (all val 0.6797 / 0.6569)  16.2s  *
+16.2 s for epoch 1 (incl. worker start-up), ETA up to 10.8 min
+epoch  2  loss 0.7382  val AP(falling) 0.8636  macro F1 0.7656  (all val 0.6893 / 0.6870)  4.1s  *
+epoch  3  loss 0.6961  val AP(falling) 0.8422  macro F1 0.7466  (all val 0.6817 / 0.6732)  4.2s
+epoch  4  loss 0.6734  val AP(falling) 0.8584  macro F1 0.7671  (all val 0.6843 / 0.6534)  4.3s
+epoch  5  loss 0.6522  val AP(falling) 0.8507  macro F1 0.7727  (all val 0.6762 / 0.6696)  4.3s
+epoch  6  loss 0.6312  val AP(falling) 0.8629  macro F1 0.7933  (all val 0.6608 / 0.6787)  4.3s
+epoch  7  loss 0.6209  val AP(falling) 0.8573  macro F1 0.7827  (all val 0.6512 / 0.6790)  4.4s
+epoch  8  loss 0.6039  val AP(falling) 0.8285  macro F1 0.7819  (all val 0.6469 / 0.6794)  4.4s
+epoch  9  loss 0.5960  val AP(falling) 0.8483  macro F1 0.7905  (all val 0.6914 / 0.6882)  4.4s
+epoch 10  loss 0.5793  val AP(falling) 0.8631  macro F1 0.7850  (all val 0.6710 / 0.6855)  4.5s
+early stop: 8 epochs without improvement
+best val AP(falling) 0.8636, macro F1 0.7656 -> models\e4_tcn_s2

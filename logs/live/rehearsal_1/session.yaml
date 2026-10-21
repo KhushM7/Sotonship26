@@ -1,0 +1,7 @@
+run: e9_ens_gru
+thresholds:
+  t_high: 0.6
+  t_low: 0.6
+on_floor_s: 20.0
+pose: full
+frames: 1613

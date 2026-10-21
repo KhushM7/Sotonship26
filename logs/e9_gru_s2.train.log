@@ -1,0 +1,17 @@
+train 53429 windows, val 12454 windows (12454 from the train sets, used for selection)
+train classes: [17795 15917  3991 15726]
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+epoch  1  loss 0.8886  val AP(falling) 0.7326  macro F1 0.6766  (all val 0.7326 / 0.6766)  false/h 93.3 at sens 0.812 (t 0.45)  88.8s  *
+88.8 s for epoch 1 (incl. worker start-up), ETA up to 59.2 min
+epoch  2  loss 0.7629  val AP(falling) 0.7575  macro F1 0.7067  (all val 0.7575 / 0.7067)  false/h 65.3 at sens 0.806 (t 0.5)  44.7s  *
+epoch  3  loss 0.7290  val AP(falling) 0.7714  macro F1 0.7068  (all val 0.7714 / 0.7068)  false/h 53.3 at sens 0.812 (t 0.6)  49.0s  *
+epoch  4  loss 0.7019  val AP(falling) 0.8002  macro F1 0.7065  (all val 0.8002 / 0.7065)  false/h 60.0 at sens 0.812 (t 0.6)  50.3s
+epoch  5  loss 0.6760  val AP(falling) 0.8067  macro F1 0.7133  (all val 0.8067 / 0.7133)  false/h 61.3 at sens 0.826 (t 0.6)  53.2s
+epoch  6  loss 0.6575  val AP(falling) 0.8092  macro F1 0.7167  (all val 0.8092 / 0.7167)  false/h 58.6 at sens 0.833 (t 0.55)  48.5s
+epoch  7  loss 0.6351  val AP(falling) 0.8024  macro F1 0.7219  (all val 0.8024 / 0.7219)  false/h 58.6 at sens 0.806 (t 0.5)  54.2s
+epoch  8  loss 0.6247  val AP(falling) 0.8011  macro F1 0.7250  (all val 0.8011 / 0.7250)  false/h 65.3 at sens 0.812 (t 0.6)  54.4s
+epoch  9  loss 0.6118  val AP(falling) 0.7977  macro F1 0.7312  (all val 0.7977 / 0.7312)  false/h 58.6 at sens 0.812 (t 0.55)  53.5s
+epoch 10  loss 0.5991  val AP(falling) 0.7952  macro F1 0.7229  (all val 0.7952 / 0.7229)  false/h 57.3 at sens 0.819 (t 0.6)  54.3s
+epoch 11  loss 0.5838  val AP(falling) 0.7883  macro F1 0.7370  (all val 0.7883 / 0.7370)  false/h 65.3 at sens 0.840 (t 0.55)  52.1s
+early stop: 8 epochs without improvement
+best val AP(falling) 0.7714, false FALL/h 53.3 at sens >= 80% -> models\e9_gru_s2

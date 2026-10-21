@@ -1,0 +1,18 @@
+train 53429 windows, val 12454 windows (12454 from the train sets, used for selection)
+train classes: [17795 15917  3991 15726]
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+epoch  1  loss 0.9003  val AP(falling) 0.7351  macro F1 0.7001  (all val 0.7351 / 0.7001)  false/h 81.3 at sens 0.806 (t 0.45)  53.4s  *
+53.4 s for epoch 1 (incl. worker start-up), ETA up to 35.6 min
+epoch  2  loss 0.7716  val AP(falling) 0.7727  macro F1 0.7089  (all val 0.7727 / 0.7089)  false/h 54.6 at sens 0.812 (t 0.65)  33.2s  *
+epoch  3  loss 0.7317  val AP(falling) 0.7933  macro F1 0.7272  (all val 0.7933 / 0.7272)  false/h 71.9 at sens 0.812 (t 0.55)  31.0s
+epoch  4  loss 0.7016  val AP(falling) 0.8084  macro F1 0.7233  (all val 0.8084 / 0.7233)  false/h 46.6 at sens 0.819 (t 0.6)  34.3s  *
+epoch  5  loss 0.6805  val AP(falling) 0.8081  macro F1 0.7148  (all val 0.8081 / 0.7148)  false/h 63.9 at sens 0.806 (t 0.65)  40.3s
+epoch  6  loss 0.6606  val AP(falling) 0.8013  macro F1 0.7272  (all val 0.8013 / 0.7272)  false/h 50.6 at sens 0.812 (t 0.6)  44.8s
+epoch  7  loss 0.6417  val AP(falling) 0.8017  macro F1 0.7388  (all val 0.8017 / 0.7388)  false/h 46.6 at sens 0.806 (t 0.55)  46.3s
+epoch  8  loss 0.6272  val AP(falling) 0.8074  macro F1 0.7219  (all val 0.8074 / 0.7219)  false/h 50.6 at sens 0.806 (t 0.65)  48.0s
+epoch  9  loss 0.6127  val AP(falling) 0.8014  macro F1 0.7278  (all val 0.8014 / 0.7278)  false/h 62.6 at sens 0.806 (t 0.65)  51.7s
+epoch 10  loss 0.6031  val AP(falling) 0.8087  macro F1 0.7406  (all val 0.8087 / 0.7406)  false/h 67.9 at sens 0.806 (t 0.45)  53.0s
+epoch 11  loss 0.5866  val AP(falling) 0.7902  macro F1 0.7285  (all val 0.7902 / 0.7285)  false/h 62.6 at sens 0.812 (t 0.6)  56.5s
+epoch 12  loss 0.5769  val AP(falling) 0.7890  macro F1 0.7277  (all val 0.7890 / 0.7277)  false/h 62.6 at sens 0.812 (t 0.65)  53.3s
+early stop: 8 epochs without improvement
+best val AP(falling) 0.8084, false FALL/h 46.6 at sens >= 80% -> models\e8_gru_s1

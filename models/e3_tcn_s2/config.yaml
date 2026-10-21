@@ -1,0 +1,74 @@
+run:
+  model: tcn
+  train_sets:
+  - GMDCSA24
+  - caucafall
+  - le2i
+  - mcfd
+  augment: true
+  occlude: false
+  seed: 2
+  out: models\e3_tcn_s2
+  windows_dir: C:\fall-data\windows
+  index: C:\fall-data\skeletons\index.csv
+  epochs: 40
+  batch: 256
+  workers: 4
+  threads: 11
+  git_commit: 23288a1-dirty
+  laptop: AnanthHN_Laptop
+  val_selection: GMDCSA24 caucafall le2i mcfd
+config:
+  schema_version: 2
+  fps: 15
+  window: 30
+  stride_train: 8
+  stride_train_near_fall: 2
+  stride_eval: 3
+  pose_model: models/pose/pose_landmarker_full.task
+  pose:
+    num_poses: 1
+    min_det: 0.5
+    min_presence: 0.5
+    min_track: 0.5
+  le2i_upscale: false
+  keypoints:
+  - 0
+  - 11
+  - 12
+  - 13
+  - 14
+  - 15
+  - 16
+  - 23
+  - 24
+  - 25
+  - 26
+  - 27
+  - 28
+  classes:
+  - upright
+  - falling
+  - fallen
+  - controlled_low
+  datasets:
+  - GMDCSA24
+  - caucafall
+  - le2i
+  - mcfd
+  - occu
+  - of-syn
+  test_only_datasets:
+  - OOPS
+  split_config_suffix: -cs
+  seed: 1337
+  on_floor_seconds: 20
+  occlusion:
+    ctx_cap_s: 20
+    edge_margin: 0.1
+    descent_speed: 0.3
+    hidden_check_s: 3.0
+    min_visible_kp: 4
+    lookback_frames: 330
+    aug_p_fall: 0.25
+    aug_p_other: 0.15
