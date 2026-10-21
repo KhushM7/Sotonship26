@@ -793,7 +793,7 @@ Done for the hackathon: data pipeline, QC, occlusion context, windows, GRU/TCN t
 
 | Document | Content |
 | --- | --- |
-| `RUNNING.md` | commands to run the site on AWS or this laptop (demo mode, idle stop, wake-on-visit), and the live webcam demo |
+| `RUNNING.md` | a quick reference for the public site (every AWS command, shutting it all down, fixes), then running it on AWS or this laptop and the live webcam demo |
 | `docs/Fall Detection – Camera Pipeline Build Plan.md` | the master plan: scope, stack, contracts, every phase, experiments, risks |
 | `docs/Dev A Plan – Data In (Fall Detection).md` | Dev A's step-by-step plan with progress ticks |
 | `docs/Dev B Plan – Model Out (Fall Detection).md` | Dev B's step-by-step plan with progress ticks |

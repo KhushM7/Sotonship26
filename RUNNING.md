@@ -9,6 +9,62 @@ visitors between them. Stop one before you start the other (see [Switching](#swi
 
 ---
 
+## Quick reference: the public site (fall-safe.bid)
+
+How it is set up: https://fall-safe.bid is a Cloudflare domain whose tunnel leads to one
+AWS EC2 instance (`t3.small`, eu-west-2, AWS profile `fallsense`) running the site in
+public demo mode. The instance stops itself 15 minutes after the last visitor leaves
+(or after 3 hours up). While it is stopped, the Cloudflare Worker `fallsense-wake`
+shows visitors a **Wake the demo** button that starts it again. Idle cost: about
+$1.50/month (the disk); about $0.03/hour while running. The domain renews yearly in
+Cloudflare.
+
+**Sign in first** (each session expires after a while):
+
+```powershell
+aws login --profile fallsense                          # AWS
+cd scripts\aws\wake; npx wrangler login; cd ..\..\..    # Cloudflare (only for `wake`)
+```
+
+| I want to… | Command |
+| --- | --- |
+| see if it is running | `.\scripts\aws.ps1 status` |
+| put new code on the site | `.\scripts\aws.ps1 deploy -Build` (`-Build` rebuilds the web app; leave it out if only Python changed) |
+| start it / stop it now | `.\scripts\aws.ps1 up` / `.\scripts\aws.ps1 down` (or let it stop itself) |
+| read the server logs | `.\scripts\aws.ps1 logs` (`-Follow` to stream) |
+| get a shell on it | `.\scripts\aws.ps1 ssh` |
+| keep it awake while I work on it | in `ssh`: `touch /opt/fallsense/state/keep-awake`; `rm` it when done |
+| set up the wake page (once) | `cd scripts\aws\wake; npm install; npx wrangler login; cd ..\..\..` then `.\scripts\aws.ps1 wake` |
+| test the wake page | `.\scripts\aws.ps1 down`, open https://fall-safe.bid, press **Wake the demo** |
+| serve from this laptop instead | `.\scripts\aws.ps1 down`, then `.\scripts\start.ps1` (see [Switching](#switching-between-aws-and-the-laptop)) |
+| turn demo mode off (PINs, real phone pushes) | `public_demo: false` in `configs\server.local.yaml`, then `deploy` |
+
+**Shut it all down for good** (stops every AWS and Cloudflare charge except the domain):
+
+1. `.\scripts\aws.ps1 destroy`: deletes the instance and its disk, the SSH endpoint,
+   the S3 bucket, the firewall group and the key pair (it asks you to type `yes`).
+2. AWS console, **IAM > Users**: delete `fallsense-wake` (made by `wake`).
+3. Cloudflare dashboard, **Workers & Pages**: delete `fallsense-wake`. Without it, the
+   site shows a Cloudflare error while nothing serves it.
+4. Optionally, Cloudflare, **Zero Trust > Networks > Tunnels**: delete the tunnel, and
+   **Domain Registration**: turn off auto-renew for fall-safe.bid.
+
+To bring it back after `destroy`, run `.\scripts\aws.ps1 create` and then
+`.\scripts\aws.ps1 wake` again (the instance ID changes, so the Worker needs the new one).
+
+**When something goes wrong:**
+
+| Symptom | Fix |
+| --- | --- |
+| a command says the session expired / no credentials | `aws login --profile fallsense` |
+| `deploy` or `up` hangs for minutes on SSH | the AWS Instance Connect link stalled. Ctrl+C and run it again (or end the stuck `ssh.exe` in Task Manager; the script retries) |
+| site shows a Cloudflare 502 error | the laptop's Cloudflared service is also on the tunnel: in an Administrator PowerShell, `Stop-Service Cloudflared; Set-Service Cloudflared -StartupType Manual` |
+| site shows Cloudflare error 1033 | nothing is serving: `.\scripts\aws.ps1 up` (or set up the wake page) |
+| wake page says "Could not wake it" | wait a minute and press again (a fresh AWS key takes a moment); if it persists, run `.\scripts\aws.ps1 wake` again |
+| page loads but shows old code | `.\scripts\aws.ps1 deploy -Build`, then Ctrl+F5 |
+
+---
+
 ## 1. AWS server (`scripts/aws.ps1`)
 
 One `t3.small` EC2 instance in the default VPC (region from `aws configure`, else `eu-west-2`).
